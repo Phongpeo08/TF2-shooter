@@ -1,0 +1,3041 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TF2 Side-Scroller Shooter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;600;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            overflow: hidden;
+            user-select: none;
+        }
+        .pixel-font {
+            font-family: 'Press Start 2P', monospace;
+        }
+        canvas {
+            display: block;
+            background: linear-gradient(to bottom, #1e293b, #0f172a);
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between relative overflow-hidden">
+
+    <!-- Top UI HUD -->
+    <header id="gameHud" class="hidden absolute top-0 left-0 w-full p-4 flex justify-between items-center z-20 pointer-events-none">
+        <div class="flex items-center space-x-4 bg-slate-900/80 backdrop-blur border border-slate-700 rounded-xl p-3 shadow-lg pointer-events-auto">
+            <div id="class-icon" class="w-12 h-12 bg-amber-600 rounded-lg flex items-center justify-center font-bold text-xl pixel-font text-white shadow-inner">S</div>
+            <div>
+                <h1 id="class-name" class="pixel-font text-sm text-amber-400">SCOUT</h1>
+                <div class="flex items-center space-x-2 mt-1">
+                    <span class="text-xs text-slate-400 font-semibold">HP:</span>
+                    <div class="w-32 bg-slate-700 h-3 rounded-full overflow-hidden border border-slate-600">
+                        <div id="hp-bar" class="bg-emerald-500 h-full transition-all duration-200" style="width: 100%;"></div>
+                    </div>
+                    <span id="hp-text" class="text-xs font-bold text-emerald-400">100/100</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-4 bg-slate-900/80 backdrop-blur border border-slate-700 rounded-xl p-3 shadow-lg pointer-events-auto">
+            <div>
+                <div class="text-xs text-slate-400 font-semibold uppercase">Ammo / Status</div>
+                <div id="ammo-text" class="pixel-font text-lg text-amber-300 mt-1">24 / 24</div>
+                <div id="sticky-status" class="hidden mt-1 text-xs text-purple-300"></div>
+                <div id="payload-hud" class="hidden mt-2 w-52 text-xs text-slate-200">
+                    <div class="flex justify-between gap-3"><span class="font-bold">PAYLOAD</span><span id="payload-time">5:00</span></div>
+                    <div id="payload-status" class="mt-1 text-slate-300">Waiting for escort</div>
+                    <div class="mt-1 h-2 overflow-hidden bg-slate-700"><div id="payload-progress" class="h-full bg-amber-400" style="width: 0%;"></div></div>
+                </div>
+            </div>
+            <div id="building-hud" class="hidden pl-4 border-l border-slate-700 text-xs text-slate-300">
+                <div id="sentry-status">Sentry: Chưa xây</div>
+                <div id="dispenser-status">Dispenser: Chưa xây</div>
+            </div>
+            <div id="medic-hud" class="hidden pl-4 border-l border-slate-700 text-xs text-slate-300">
+                <div id="medic-status">Uber: Sẵn sàng (E)</div>
+                <div class="text-emerald-400">Hồi máu: +4 HP/s</div>
+            </div>
+            <div id="spy-hud" class="hidden pl-4 border-l border-slate-700 text-xs text-slate-300">
+                <div id="spy-status">Cloak: 10s (E)</div>
+                <div class="w-28 h-2 mt-1 bg-slate-700 rounded overflow-hidden">
+                    <div id="spy-cloak-bar" class="h-full bg-cyan-400 transition-all" style="width: 100%;"></div>
+                </div>
+                <div class="text-slate-400">Click khi tàng hình: Backstab</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Controls / Info Footer -->
+    <footer id="gameFooter" class="hidden absolute bottom-0 left-0 w-full p-3 flex flex-wrap justify-between gap-2 z-20 pointer-events-none bg-slate-950/80 border-t border-slate-800 text-xs text-slate-400">
+        <div class="flex flex-wrap items-center gap-3 pointer-events-auto">
+            <span class="bg-slate-800 px-2 py-1 rounded text-slate-300 font-bold border border-slate-700">A / D</span> Di chuyển
+            <span class="bg-slate-800 px-2 py-1 rounded text-slate-300 font-bold border border-slate-700">W / Space</span> Nhảy (Scout: Double Jump)
+            <span class="bg-slate-800 px-2 py-1 rounded text-slate-300 font-bold border border-slate-700">Click Trái</span> Bắn / Sửa (Wrench)
+            <span class="bg-slate-800 px-2 py-1 rounded text-slate-300 font-bold border border-slate-700">R</span> Nạp đạn
+            <span class="bg-slate-800 px-2 py-1 rounded text-slate-300 font-bold border border-slate-700">E</span> Pyro: Reflect | Demoman: Sticky | Engineer: Sentry | Medic: Uber | Spy: Cloak 10s
+            <span class="bg-slate-800 px-2 py-1 rounded text-slate-300 font-bold border border-slate-700">Q</span> Xây Dispenser (Engineer)
+        </div>
+        <div class="pointer-events-auto flex items-center gap-2">
+            <span class="bg-slate-800 px-2 py-1 rounded text-slate-300 font-bold border border-slate-700">,</span>
+            <span class="text-slate-300 font-bold">Đổi class</span>
+            <span class="bg-slate-800 px-2 py-1 rounded text-slate-300 font-bold border border-slate-700">.</span>
+            <span class="text-slate-300 font-bold">Đổi team</span>
+        </div>
+    </footer>
+
+    <section id="introScreen" class="fixed inset-0 z-40 flex items-center justify-center bg-slate-950 p-6">
+        <div class="absolute inset-x-0 top-1/3 h-px bg-slate-800"></div>
+        <div class="absolute inset-x-0 top-1/3 mt-2 h-px bg-slate-800/50"></div>
+        <div class="relative w-full max-w-3xl border-y border-slate-700 py-12 text-center">
+            <div class="mb-6 flex items-center justify-center gap-3">
+                <span class="h-2 w-14 bg-red-600"></span>
+                <span class="pixel-font text-xs text-slate-400">TEAM FORTRESS</span>
+                <span class="h-2 w-14 bg-blue-500"></span>
+            </div>
+            <h1 class="pixel-font text-2xl leading-relaxed text-amber-300 sm:text-4xl">SIDE-SCROLLER<br>SHOOTER</h1>
+            <p class="mt-5 text-sm font-semibold uppercase tracking-widest text-slate-400">RED VS. BLU</p>
+            <button onclick="showModeSelect()" class="mt-10 border-2 border-amber-300 bg-amber-500 px-10 py-4 pixel-font text-sm text-slate-950 shadow-[5px_5px_0_#713f12] transition hover:-translate-y-1 hover:bg-amber-300">PLAY</button>
+        </div>
+    </section>
+
+    <section id="modeSelectScreen" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-950 p-6">
+        <div class="w-full max-w-3xl">
+            <div class="mb-8 flex items-end justify-between border-b border-slate-700 pb-4">
+                <div>
+                    <p class="pixel-font text-[10px] text-slate-400">CHOOSE THE OBJECTIVE</p>
+                    <h2 class="mt-3 pixel-font text-xl text-slate-100 sm:text-2xl">SELECT MODE</h2>
+                </div>
+                <button onclick="returnToIntro()" class="border border-slate-600 px-4 py-2 text-sm font-bold text-slate-300 transition hover:border-amber-300 hover:text-amber-300">BACK</button>
+            </div>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <button onclick="selectMode('TDM')" class="group border-2 border-slate-700 bg-slate-900 p-8 text-left transition hover:border-amber-400 hover:bg-slate-800">
+                    <span class="pixel-font text-xs text-amber-300">MODE 01</span>
+                    <strong class="mt-4 block pixel-font text-xl text-white">TEAM DEATHMATCH</strong>
+                    <span class="mt-3 block text-sm text-slate-400">Eliminate the opposing team.</span>
+                </button>
+                <button onclick="selectMode('Payload')" class="group border-2 border-slate-700 bg-slate-900 p-8 text-left transition hover:border-amber-400 hover:bg-slate-800">
+                    <span class="pixel-font text-xs text-amber-300">MODE 02</span>
+                    <strong class="mt-4 block pixel-font text-xl text-white">PAYLOAD</strong>
+                    <span class="mt-3 block text-sm text-slate-400">Escort the cart. Stop it from being contested.</span>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <section id="teamSelectScreen" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-950 p-6">
+        <div class="w-full max-w-3xl">
+            <div class="mb-8 flex items-end justify-between border-b border-slate-700 pb-4">
+                <div>
+                    <p class="pixel-font text-[10px] text-slate-400">CHOOSE YOUR SIDE</p>
+                    <h2 class="mt-3 pixel-font text-xl text-slate-100 sm:text-2xl">SELECT TEAM</h2>
+                </div>
+                <button onclick="closeTeamSelect()" class="border border-slate-600 px-4 py-2 text-sm font-bold text-slate-300 transition hover:border-amber-300 hover:text-amber-300">BACK</button>
+            </div>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <button onclick="selectTeam('RED')" class="group border-2 border-red-900 bg-red-950/60 p-8 text-left transition hover:border-red-400 hover:bg-red-950">
+                    <span class="pixel-font text-xs text-red-300">TEAM</span>
+                    <strong class="mt-4 block pixel-font text-2xl text-red-400">RED</strong>
+                    <span class="mt-3 block text-sm text-red-100/70">Reliable Excavation Demolition</span>
+                </button>
+                <button onclick="selectTeam('BLU')" class="group border-2 border-blue-900 bg-blue-950/60 p-8 text-left transition hover:border-blue-400 hover:bg-blue-950">
+                    <span class="pixel-font text-xs text-blue-300">TEAM</span>
+                    <strong class="mt-4 block pixel-font text-2xl text-blue-400">BLU</strong>
+                    <span class="mt-3 block text-sm text-blue-100/70">Builders League United</span>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <section id="classSelectScreen" class="fixed inset-0 z-40 hidden items-center justify-center overflow-y-auto bg-slate-950 p-4 sm:p-8">
+        <div class="w-full max-w-4xl py-6">
+            <div class="mb-6 flex items-end justify-between border-b border-slate-700 pb-4">
+                <div>
+                    <p class="pixel-font text-[10px] text-red-400">CHOOSE YOUR FIGHTER</p>
+                    <h2 class="mt-3 pixel-font text-lg text-slate-100 sm:text-2xl">SELECT CLASS</h2>
+                </div>
+                <button onclick="closeClassSelect()" class="border border-slate-600 px-4 py-2 text-sm font-bold text-slate-300 transition hover:border-amber-300 hover:text-amber-300">BACK</button>
+            </div>
+            <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <button onclick="startGame('Scout')" class="group border border-slate-700 bg-slate-900 p-4 text-left transition hover:border-amber-400 hover:bg-slate-800"><span class="pixel-font text-xs text-amber-400">01</span><strong class="mt-3 block text-base text-white">Scout</strong><span class="mt-1 block text-xs text-slate-400">Scattergun</span></button>
+                <button onclick="startGame('Pyro')" class="group border border-slate-700 bg-slate-900 p-4 text-left transition hover:border-orange-400 hover:bg-slate-800"><span class="pixel-font text-xs text-orange-400">02</span><strong class="mt-3 block text-base text-white">Pyro</strong><span class="mt-1 block text-xs text-slate-400">Flamethrower</span></button>
+                <button onclick="startGame('Soldier')" class="group border border-slate-700 bg-slate-900 p-4 text-left transition hover:border-blue-400 hover:bg-slate-800"><span class="pixel-font text-xs text-blue-400">03</span><strong class="mt-3 block text-base text-white">Soldier</strong><span class="mt-1 block text-xs text-slate-400">Rocket Launcher</span></button>
+                <button onclick="startGame('Demoman')" class="group border border-slate-700 bg-slate-900 p-4 text-left transition hover:border-purple-400 hover:bg-slate-800"><span class="pixel-font text-xs text-purple-400">04</span><strong class="mt-3 block text-base text-white">Demoman</strong><span class="mt-1 block text-xs text-slate-400">Grenade Launcher</span></button>
+                <button onclick="startGame('Heavy')" class="group border border-slate-700 bg-slate-900 p-4 text-left transition hover:border-red-400 hover:bg-slate-800"><span class="pixel-font text-xs text-red-400">05</span><strong class="mt-3 block text-base text-white">Heavy</strong><span class="mt-1 block text-xs text-slate-400">Minigun</span></button>
+                <button onclick="startGame('Sniper')" class="group border border-slate-700 bg-slate-900 p-4 text-left transition hover:border-emerald-400 hover:bg-slate-800"><span class="pixel-font text-xs text-emerald-400">06</span><strong class="mt-3 block text-base text-white">Sniper</strong><span class="mt-1 block text-xs text-slate-400">Sniper Rifle</span></button>
+                <button onclick="startGame('Engineer')" class="group border border-slate-700 bg-slate-900 p-4 text-left transition hover:border-yellow-400 hover:bg-slate-800"><span class="pixel-font text-xs text-yellow-400">07</span><strong class="mt-3 block text-base text-white">Engineer</strong><span class="mt-1 block text-xs text-slate-400">Shotgun & Buildings</span></button>
+                <button onclick="startGame('Medic')" class="group border border-slate-700 bg-slate-900 p-4 text-left transition hover:border-rose-400 hover:bg-slate-800"><span class="pixel-font text-xs text-rose-400">08</span><strong class="mt-3 block text-base text-white">Medic</strong><span class="mt-1 block text-xs text-slate-400">Syringe Gun</span></button>
+                <button onclick="startGame('Spy')" class="group border border-slate-700 bg-slate-900 p-4 text-left transition hover:border-slate-400 hover:bg-slate-800"><span class="pixel-font text-xs text-slate-300">09</span><strong class="mt-3 block text-base text-white">Spy</strong><span class="mt-1 block text-xs text-slate-400">Revolver & Knife</span></button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Game Canvas Container -->
+    <div class="relative w-full h-full flex items-center justify-center">
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <!-- Message Box Modal (Custom, No alert) -->
+    <div id="modalBox" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+        <div class="bg-slate-900 border border-slate-700 p-6 rounded-2xl max-w-md w-full shadow-2xl text-center">
+            <h3 id="modalTitle" class="pixel-font text-amber-400 text-lg mb-3">Thông Báo</h3>
+            <p id="modalMessage" class="text-slate-300 text-sm mb-6 leading-relaxed">Nội dung thông báo...</p>
+            <button onclick="closeModal()" class="px-6 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl shadow-lg transition">Đóng</button>
+        </div>
+    </div>
+
+    <div id="quitConfirmModal" class="fixed inset-0 z-[60] hidden items-center justify-center bg-black/75 p-6">
+        <div class="w-full max-w-sm border border-slate-600 bg-slate-900 p-6 text-center shadow-2xl">
+            <p class="pixel-font text-xs text-red-400">LEAVE MATCH?</p>
+            <h2 class="mt-4 pixel-font text-lg text-white">QUIT TO MENU</h2>
+            <p class="mt-3 text-sm text-slate-400">Bạn có chắc muốn thoát trận hiện tại?</p>
+            <div class="mt-6 flex justify-center gap-3">
+                <button onclick="quitToMenu()" class="border border-red-500 bg-red-700 px-5 py-2 text-sm font-bold text-white transition hover:bg-red-600">QUIT</button>
+                <button onclick="cancelQuit()" class="border border-slate-500 px-5 py-2 text-sm font-bold text-slate-200 transition hover:border-white">CANCEL</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Web Audio Sound Synthesizer ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            if (!audioCtx) return;
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+
+            if (type === 'shoot_pistol') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(80, now + 0.1);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now);
+                osc.stop(now + 0.1);
+            } else if (type === 'shoot_shotgun') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                osc.start(now);
+                osc.stop(now + 0.2);
+            } else if (type === 'explosion') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(120, now);
+                osc.frequency.linearRampToValueAtTime(20, now + 0.4);
+                gain.gain.setValueAtTime(0.6, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                osc.start(now);
+                osc.stop(now + 0.4);
+            } else if (type === 'flame') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(150 + Math.random() * 100, now);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+                osc.start(now);
+                osc.stop(now + 0.08);
+            } else if (type === 'minigun') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, now);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+                osc.start(now);
+                osc.stop(now + 0.05);
+            } else if (type === 'build') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, now);
+                osc.frequency.setValueAtTime(880, now + 0.1);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            }
+        }
+
+        // --- Custom Modal ---
+        function showModal(title, msg) {
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('modalMessage').innerText = msg;
+            document.getElementById('modalBox').classList.remove('hidden');
+        }
+        function closeModal() {
+            document.getElementById('modalBox').classList.add('hidden');
+        }
+
+        // --- Canvas & Setup ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // --- Game Classes Config ---
+        const CLASSES = {
+            'Scout': { name: 'Scout', hp: 100, maxHp: 100, ammo: 6, maxAmmo: 6, speed: 6.5, jump: -13, weapon: 'scattergun', color: '#eab308', icon: 'S', reloadTime: 90, fireCooldown: 24 },
+            'Pyro': { name: 'Pyro', hp: 175, maxHp: 175, ammo: 200, maxAmmo: 200, speed: 4.8, jump: -11, weapon: 'flamethrower', color: '#f97316', icon: 'P', reloadTime: 120, fireCooldown: 4 },
+            'Soldier': { name: 'Soldier', hp: 200, maxHp: 200, ammo: 4, maxAmmo: 4, speed: 4.2, jump: -10, weapon: 'rocket', color: '#3b82f6', icon: 'R', reloadTime: 100, fireCooldown: 35 },
+            'Demoman': { name: 'Demoman', hp: 150, maxHp: 150, ammo: 6, maxAmmo: 6, stickyAmmo: 8, maxStickyAmmo: 8, speed: 4.5, jump: -10.5, weapon: 'grenade', color: '#a855f7', icon: 'D', reloadTime: 110, fireCooldown: 30 },
+            'Heavy': { name: 'Heavy', hp: 300, maxHp: 300, ammo: 200, maxAmmo: 200, speed: 3.2, jump: -8, weapon: 'minigun', color: '#ef4444', icon: 'H', reloadTime: 150, fireCooldown: 4 },
+            'Sniper': { name: 'Sniper', hp: 125, maxHp: 125, ammo: 12, maxAmmo: 12, speed: 4.5, jump: -10, weapon: 'sniper', color: '#10b981', icon: 'SN', reloadTime: 90, fireCooldown: 45 },
+            'Engineer': { name: 'Engineer', hp: 125, maxHp: 125, ammo: 6, maxAmmo: 6, speed: 4.5, jump: -10, weapon: 'shotgun', color: '#f59e0b', icon: 'E', reloadTime: 80, fireCooldown: 25 },
+            'Medic': { name: 'Medic', hp: 150, maxHp: 150, ammo: 40, maxAmmo: 40, speed: 4.5, jump: -10, weapon: 'syringe', color: '#e2e8f0', icon: 'M', reloadTime: 100, fireCooldown: 6 },
+            'Spy': { name: 'Spy', hp: 125, maxHp: 125, ammo: 6, maxAmmo: 6, speed: 4.8, jump: -10, weapon: 'revolver', color: '#64748b', icon: 'SP', reloadTime: 90, fireCooldown: 18 }
+        };
+
+        const TEAM_SKINS = {
+            RED: { primary: '#b91c1c', dark: '#7f1d1d', light: '#fecaca' },
+            BLU: { primary: '#2563eb', dark: '#1e3a8a', light: '#bfdbfe' }
+        };
+        const SPAWN_ROOM = { left: 0, right: 360, top: 420, floorY: 600 };
+        const ENEMY_SPAWN_ROOM = { left: 3600, right: 4000, top: 420, floorY: 600 };
+        let currentGameMode = 'TDM';
+        let currentTeam = 'RED';
+        let payloadCart = null;
+        let payloadHudTimer = 0;
+        let currentClassKey = 'Scout';
+        let gameStarted = false;
+        let isClassSelectOpen = false;
+        let isQuitConfirmOpen = false;
+        let player = {
+            x: 150, y: 544, w: 32, h: 56,
+            vx: 0, vy: 0,
+            isGrounded: false,
+            jumpCount: 0,
+            jumpPressed: false,
+            facing: 1, // 1 right, -1 left
+            shooting: false,
+            shootTimer: 0,
+            cooldownTimer: 0,
+            isReloading: false,
+            reloadProgress: 0,
+            reloadTimer: 0,
+            medicHealTimer: 0,
+            uberTimer: 0,
+            uberCooldown: 0,
+            isCloaked: false,
+            cloakCharge: 600,
+            spyHudFrameCounter: 0,
+            hasExitedSpawnRoom: false
+        };
+
+        let activeClass = { ...CLASSES[currentClassKey] };
+
+        // Buildings for Engineer
+        let buildings = { sentry: null, dispenser: null };
+        let stickyBomb = null;
+
+        // Helper to find ground surface directly below player feet
+        function findGroundY(px, py) {
+            let groundY = py + 56; // Mặc định dưới chân
+            let closestDist = Infinity;
+            platforms.forEach(p => {
+                // Kiểm tra xem platform có nằm ngay bên dưới player không
+                if (px + 32 >= p.x && px <= p.x + p.w && p.y >= py) {
+                    let dist = p.y - (py + 56);
+                    if (dist >= 0 && dist < closestDist) {
+                        closestDist = dist;
+                        groundY = p.y;
+                    }
+                }
+            });
+            return groundY;
+        }
+
+        // Game Entities
+        let bullets = [];
+        let enemies = [];
+        let particles = [];
+        let debris = []; // Vật lý mảnh vỡ vụ nổ
+        let floatingTexts = [];
+        let platforms = [];
+        let items = []; // Ammo / HP packs
+        let medkitSpawnTimer = 0;
+
+        // Camera Shake
+        let shakeDuration = 0;
+        let shakeIntensity = 0;
+
+        // Enemy Spawner variables
+        let spawnTimer = 0;
+        let spawnInterval = 180; // Spawn every 3 seconds at 60fps
+
+        // Inputs
+        const keys = {};
+        let mouse = { x: 0, y: 0, down: false, worldX: 0, worldY: 0 };
+        let camera = { x: 0, y: 0 };
+
+        window.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            if (e.repeat) return;
+            if (e.key === 'Escape' && gameStarted) {
+                if (isQuitConfirmOpen) cancelQuit();
+                else openQuitConfirm();
+                return;
+            }
+            if ((e.key === ',' || e.code === 'Comma') && gameStarted) {
+                openClassSelect();
+                return;
+            }
+            if ((e.key === '.' || e.code === 'Period') && gameStarted) {
+                openTeamSelect();
+                return;
+            }
+            if (e.key.toLowerCase() === 'w' || e.key === ' ') player.jumpPressed = true;
+            if (e.key.toLowerCase() === 'r') reloadWeapon();
+            if (e.key.toLowerCase() === 'e' && currentClassKey === 'Pyro') reflectProjectiles();
+            if (e.key.toLowerCase() === 'e' && currentClassKey === 'Demoman') toggleStickyBomb();
+            if (e.key.toLowerCase() === 'e' && currentClassKey === 'Engineer') buildSentry();
+            if (e.key.toLowerCase() === 'e' && currentClassKey === 'Medic') activateUbercharge();
+            if (e.key.toLowerCase() === 'e' && currentClassKey === 'Spy') toggleSpyCloak();
+            if (e.key.toLowerCase() === 'q' && currentClassKey === 'Engineer') buildDispenser();
+
+            // Quick switch classes via number keys 1-9
+            if (e.key === '1') switchClass('Scout');
+            if (e.key === '2') switchClass('Pyro');
+            if (e.key === '3') switchClass('Soldier');
+            if (e.key === '4') switchClass('Demoman');
+            if (e.key === '5') switchClass('Heavy');
+            if (e.key === '6') switchClass('Sniper');
+            if (e.key === '7') switchClass('Engineer');
+            if (e.key === '8') switchClass('Medic');
+            if (e.key === '9') switchClass('Spy');
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouse.x = e.clientX - rect.left;
+            mouse.y = e.clientY - rect.top;
+            mouse.worldX = mouse.x + camera.x;
+            mouse.worldY = mouse.y + camera.y;
+        });
+
+        window.addEventListener('mousedown', (e) => {
+            if (e.button === 0) {
+                mouse.down = true;
+                if (currentClassKey === 'Spy' && player.isCloaked) {
+                    spyBackstab();
+                    return;
+                }
+                // Bắn ngay 1 phát khi nhấn chuột trái đối với các loại súng bán tự động/đơn
+                if (activeClass.weapon !== 'flamethrower' && activeClass.weapon !== 'minigun') {
+                    shootWeapon();
+                }
+            }
+        });
+
+        window.addEventListener('mouseup', (e) => {
+            if (e.button === 0) mouse.down = false;
+        });
+
+        function switchClass(className) {
+            if (!CLASSES[className]) return;
+            currentClassKey = className;
+            activeClass = { ...CLASSES[className] };
+            player.isCloaked = false;
+            player.isReloading = false;
+            player.reloadTimer = 0;
+            player.cooldownTimer = 0;
+            player.medicHealTimer = 0;
+            buildings.sentry = null;
+            buildings.dispenser = null;
+            player.vx = 0; player.vy = 0;
+            updateHUD();
+        }
+
+        function showClassSelect() {
+            document.getElementById('introScreen').classList.add('hidden');
+            document.getElementById('teamSelectScreen').classList.add('hidden');
+            document.getElementById('teamSelectScreen').classList.remove('flex');
+            document.getElementById('classSelectScreen').classList.remove('hidden');
+            document.getElementById('classSelectScreen').classList.add('flex');
+            isClassSelectOpen = true;
+        }
+
+        function showTeamSelect() {
+            document.getElementById('introScreen').classList.add('hidden');
+            document.getElementById('modeSelectScreen').classList.add('hidden');
+            document.getElementById('modeSelectScreen').classList.remove('flex');
+            document.getElementById('teamSelectScreen').classList.remove('hidden');
+            document.getElementById('teamSelectScreen').classList.add('flex');
+        }
+
+        function showModeSelect() {
+            document.getElementById('introScreen').classList.add('hidden');
+            document.getElementById('modeSelectScreen').classList.remove('hidden');
+            document.getElementById('modeSelectScreen').classList.add('flex');
+        }
+
+        function selectMode(mode) {
+            if (mode !== 'TDM' && mode !== 'Payload') return;
+            currentGameMode = mode;
+            showTeamSelect();
+        }
+
+        function selectTeam(team) {
+            if (!TEAM_SKINS[team]) return;
+            currentTeam = team;
+            if (gameStarted) {
+                document.getElementById('teamSelectScreen').classList.add('hidden');
+                document.getElementById('teamSelectScreen').classList.remove('flex');
+                document.getElementById('gameHud').classList.remove('hidden');
+                document.getElementById('gameFooter').classList.remove('hidden');
+                isClassSelectOpen = false;
+                updateHUD();
+                return;
+            }
+            showClassSelect();
+        }
+
+        function openTeamSelect() {
+            showTeamSelect();
+            document.getElementById('gameHud').classList.add('hidden');
+            document.getElementById('gameFooter').classList.add('hidden');
+            isClassSelectOpen = true;
+        }
+
+        function closeTeamSelect() {
+            if (gameStarted) {
+                document.getElementById('teamSelectScreen').classList.add('hidden');
+                document.getElementById('teamSelectScreen').classList.remove('flex');
+                document.getElementById('gameHud').classList.remove('hidden');
+                document.getElementById('gameFooter').classList.remove('hidden');
+                isClassSelectOpen = false;
+                return;
+            }
+            document.getElementById('teamSelectScreen').classList.add('hidden');
+            document.getElementById('teamSelectScreen').classList.remove('flex');
+            document.getElementById('modeSelectScreen').classList.remove('hidden');
+            document.getElementById('modeSelectScreen').classList.add('flex');
+        }
+
+        function openClassSelect() {
+            showClassSelect();
+            document.getElementById('gameHud').classList.add('hidden');
+            document.getElementById('gameFooter').classList.add('hidden');
+        }
+
+        function closeClassSelect() {
+            if (gameStarted) {
+                document.getElementById('classSelectScreen').classList.add('hidden');
+                document.getElementById('classSelectScreen').classList.remove('flex');
+                document.getElementById('gameHud').classList.remove('hidden');
+                document.getElementById('gameFooter').classList.remove('hidden');
+                isClassSelectOpen = false;
+                return;
+            }
+            document.getElementById('classSelectScreen').classList.add('hidden');
+            document.getElementById('classSelectScreen').classList.remove('flex');
+            document.getElementById('teamSelectScreen').classList.remove('hidden');
+            document.getElementById('teamSelectScreen').classList.add('flex');
+            isClassSelectOpen = false;
+        }
+
+        function returnToIntro() {
+            document.getElementById('classSelectScreen').classList.add('hidden');
+            document.getElementById('classSelectScreen').classList.remove('flex');
+            document.getElementById('teamSelectScreen').classList.add('hidden');
+            document.getElementById('teamSelectScreen').classList.remove('flex');
+            document.getElementById('modeSelectScreen').classList.add('hidden');
+            document.getElementById('modeSelectScreen').classList.remove('flex');
+            document.getElementById('introScreen').classList.remove('hidden');
+            isClassSelectOpen = false;
+        }
+
+        function startGame(className) {
+            let isNewGame = !gameStarted;
+            if (isNewGame) resetGameWorld();
+            switchClass(className);
+            if (isNewGame) {
+                player.x = 150;
+                player.y = SPAWN_ROOM.floorY - player.h;
+                player.vx = 0;
+                player.vy = 0;
+                player.hasExitedSpawnRoom = false;
+            }
+            gameStarted = true;
+            isClassSelectOpen = false;
+            document.getElementById('introScreen').classList.add('hidden');
+            document.getElementById('modeSelectScreen').classList.add('hidden');
+            document.getElementById('modeSelectScreen').classList.remove('flex');
+            document.getElementById('teamSelectScreen').classList.add('hidden');
+            document.getElementById('teamSelectScreen').classList.remove('flex');
+            document.getElementById('classSelectScreen').classList.add('hidden');
+            document.getElementById('classSelectScreen').classList.remove('flex');
+            document.getElementById('gameHud').classList.remove('hidden');
+            document.getElementById('gameFooter').classList.remove('hidden');
+            updateHUD();
+        }
+
+        function resetGameWorld() {
+            initMap();
+            bullets = [];
+            particles = [];
+            debris = [];
+            floatingTexts = [];
+            stickyBomb = null;
+            buildings = { sentry: null, dispenser: null };
+            spawnTimer = 0;
+            payloadCart = currentGameMode === 'Payload' ? {
+                x: SPAWN_ROOM.right + 64,
+                y: SPAWN_ROOM.floorY,
+                startX: SPAWN_ROOM.right + 64,
+                goalX: ENEMY_SPAWN_ROOM.left - 48,
+                progress: 0,
+                timeRemaining: 18000,
+                state: 'WAITING FOR ESCORT',
+                complete: false,
+                noEscortTimer: 0,
+                lastCheckpointX: SPAWN_ROOM.right + 64,
+                checkpoints: [1200, 2000, 2800],
+                checkpointIndex: 0,
+                healTimer: 0
+            } : null;
+            payloadHudTimer = 0;
+            shakeDuration = 0;
+            shakeIntensity = 0;
+            camera.x = 0;
+            camera.y = 0;
+            player.jumpCount = 0;
+            player.jumpPressed = false;
+            player.isCloaked = false;
+            player.cloakCharge = 600;
+            player.medicHealTimer = 0;
+            player.uberTimer = 0;
+            player.uberCooldown = 0;
+            player.hasExitedSpawnRoom = false;
+        }
+
+        function updatePayload() {
+            if (currentGameMode !== 'Payload' || !payloadCart || payloadCart.complete) return;
+
+            payloadCart.timeRemaining--;
+            if (payloadCart.timeRemaining <= 0) {
+                payloadCart.timeRemaining = 0;
+                payloadCart.complete = true;
+                payloadCart.state = 'TIME EXPIRED';
+                showModal('PAYLOAD FAILED', 'Time ran out before delivery.');
+                updateHUD();
+                return;
+            }
+
+            let playerNearCart = Math.hypot(
+                player.x + player.w / 2 - payloadCart.x,
+                player.y + player.h / 2 - (payloadCart.y - 20)
+            ) < 150;
+            let enemyContesting = enemies.some(enemy =>
+                enemy.hasExitedEnemySpawnRoom &&
+                Math.abs(enemy.x + enemy.w / 2 - payloadCart.x) < 110 &&
+                Math.abs(enemy.y + enemy.h / 2 - (payloadCart.y - 20)) < 100
+            );
+
+            if (playerNearCart && enemyContesting) {
+                payloadCart.state = 'CONTESTED';
+            } else if (playerNearCart) {
+                let pushSpeed = currentClassKey === 'Scout' ? 1.4 : 0.7;
+                payloadCart.x = Math.min(payloadCart.goalX, payloadCart.x + pushSpeed);
+                payloadCart.state = 'ESCORTING';
+                payloadCart.noEscortTimer = 0;
+                payloadCart.healTimer++;
+                if (payloadCart.healTimer >= 60) {
+                    payloadCart.healTimer = 0;
+                    if (activeClass.hp < activeClass.maxHp) {
+                        activeClass.hp = Math.min(activeClass.maxHp, activeClass.hp + 1);
+                        updateHUD();
+                        addFloatingText(player.x, player.y - 20, '+1 HP PAYLOAD', '#34d399');
+                    }
+                }
+            } else {
+                payloadCart.noEscortTimer++;
+                payloadCart.healTimer = 0;
+                if (payloadCart.noEscortTimer >= 300 && payloadCart.x > payloadCart.lastCheckpointX) {
+                    payloadCart.x = Math.max(payloadCart.lastCheckpointX, payloadCart.x - 0.55);
+                    payloadCart.state = 'RETURNING TO CHECKPOINT';
+                } else {
+                    payloadCart.state = enemyContesting ? 'CONTESTED' : 'WAITING FOR ESCORT';
+                }
+            }
+
+            while (payloadCart.checkpointIndex < payloadCart.checkpoints.length &&
+                payloadCart.x >= payloadCart.checkpoints[payloadCart.checkpointIndex]) {
+                payloadCart.lastCheckpointX = payloadCart.checkpoints[payloadCart.checkpointIndex];
+                payloadCart.checkpointIndex++;
+                payloadCart.timeRemaining += 1800;
+                payloadCart.noEscortTimer = 0;
+                playSound('build');
+                addFloatingText(payloadCart.x, payloadCart.y - 50, 'CHECKPOINT! +30s', '#facc15');
+            }
+
+            payloadCart.progress = Math.min(100, ((payloadCart.x - payloadCart.startX) / (payloadCart.goalX - payloadCart.startX)) * 100);
+            if (payloadCart.x >= payloadCart.goalX) {
+                payloadCart.complete = true;
+                payloadCart.state = 'DELIVERED';
+                addFloatingText(payloadCart.x, payloadCart.y - 52, 'PAYLOAD DELIVERED!', '#facc15');
+                showModal('PAYLOAD DELIVERED', `${currentTeam} delivered the payload!`);
+            }
+
+            payloadHudTimer++;
+            if (payloadHudTimer >= 15 || payloadCart.complete) {
+                payloadHudTimer = 0;
+                updateHUD();
+            }
+        }
+
+        function openQuitConfirm() {
+            isQuitConfirmOpen = true;
+            document.getElementById('quitConfirmModal').classList.remove('hidden');
+            document.getElementById('quitConfirmModal').classList.add('flex');
+        }
+
+        function cancelQuit() {
+            isQuitConfirmOpen = false;
+            document.getElementById('quitConfirmModal').classList.add('hidden');
+            document.getElementById('quitConfirmModal').classList.remove('flex');
+        }
+
+        function quitToMenu() {
+            cancelQuit();
+            gameStarted = false;
+            isClassSelectOpen = false;
+            document.getElementById('classSelectScreen').classList.add('hidden');
+            document.getElementById('classSelectScreen').classList.remove('flex');
+            document.getElementById('teamSelectScreen').classList.add('hidden');
+            document.getElementById('teamSelectScreen').classList.remove('flex');
+            document.getElementById('modeSelectScreen').classList.add('hidden');
+            document.getElementById('modeSelectScreen').classList.remove('flex');
+            document.getElementById('gameHud').classList.add('hidden');
+            document.getElementById('gameFooter').classList.add('hidden');
+            document.getElementById('introScreen').classList.remove('hidden');
+        }
+
+        function reloadWeapon() {
+            let stickyNeedsReload = currentClassKey === 'Demoman' && activeClass.stickyAmmo < activeClass.maxStickyAmmo;
+            if (player.isReloading || (activeClass.ammo === activeClass.maxAmmo && !stickyNeedsReload)) return;
+            player.isReloading = true;
+            player.reloadTimer = activeClass.reloadTime;
+            addFloatingText(player.x, player.y - 30, "Đang nạp đạn...", "#38bdf8");
+        }
+
+        function buildSentry() {
+            if (buildings.sentry) {
+                // Ưu tiên hồi máu/sửa chữa Sentry trước nếu nó bị mất máu
+                let dist = Math.hypot((player.x + player.w/2) - buildings.sentry.x, (player.y + player.h/2) - buildings.sentry.y);
+                if (dist < 70) {
+                    if (buildings.sentry.hp < buildings.sentry.maxHp) {
+                        buildings.sentry.hp = Math.min(buildings.sentry.maxHp, buildings.sentry.hp + 50);
+                        playSound('build');
+                        addFloatingText(buildings.sentry.x, buildings.sentry.y - 45, "SENTRY REPAIRED +50 HP!", "#10b981");
+                        updateHUD();
+                        return;
+                    } else if (buildings.sentry.level < 3) {
+                        buildings.sentry.level++;
+                        buildings.sentry.maxHp += 50;
+                        buildings.sentry.hp = buildings.sentry.maxHp;
+                        playSound('build');
+                        addFloatingText(buildings.sentry.x, buildings.sentry.y - 45, `SENTRY UPGRADED LV ${buildings.sentry.level}!`, '#eab308');
+                        updateHUD();
+                        return;
+                    } else {
+                        addFloatingText(player.x, player.y - 30, "Sentry đã đạt cấp và đầy máu tối đa!", '#10b981');
+                        return;
+                    }
+                } else {
+                    buildings.sentry = null;
+                    addFloatingText(player.x, player.y - 30, "SENTRY THÁO DỠ", "#ef4444");
+                }
+            }
+            let spawnX = player.x + (player.facing * 45);
+            let groundY = findGroundY(spawnX, player.y);
+            buildings.sentry = { 
+                x: spawnX, 
+                y: groundY, 
+                spawnRoomSide: isInsideSpawnRoom(player.x + player.w / 2, player.y + player.h / 2) ? 'inside' : 'outside',
+                hp: 100, 
+                maxHp: 100,
+                level: 1, 
+                fireTimer: 0,
+                angle: 0 
+            };
+            playSound('build');
+            addFloatingText(player.x, player.y - 30, "SENTRY BUILT LV 1!", "#eab308");
+            updateHUD();
+        }
+
+        function buildDispenser() {
+            if (buildings.dispenser) {
+                // Ưu tiên hồi máu/sửa chữa Dispenser trước nếu nó bị mất máu
+                let dist = Math.hypot((player.x + player.w/2) - buildings.dispenser.x, (player.y + player.h/2) - buildings.dispenser.y);
+                if (dist < 70) {
+                    if (buildings.dispenser.hp < buildings.dispenser.maxHp) {
+                        buildings.dispenser.hp = Math.min(buildings.dispenser.maxHp, buildings.dispenser.hp + 50);
+                        playSound('build');
+                        addFloatingText(buildings.dispenser.x, buildings.dispenser.y - 45, "DISPENSER REPAIRED +50 HP!", "#10b981");
+                        updateHUD();
+                        return;
+                    } else if (buildings.dispenser.level < 3) {
+                        buildings.dispenser.level++;
+                        buildings.dispenser.maxHp += 75;
+                        buildings.dispenser.hp = buildings.dispenser.maxHp;
+                        playSound('build');
+                        addFloatingText(buildings.dispenser.x, buildings.dispenser.y - 45, `DISPENSER UPGRADED LV ${buildings.dispenser.level}!`, '#10b981');
+                        updateHUD();
+                        return;
+                    } else {
+                        addFloatingText(player.x, player.y - 30, "Dispenser đã đạt cấp và đầy máu tối đa!", '#10b981');
+                        return;
+                    }
+                } else {
+                    buildings.dispenser = null;
+                    addFloatingText(player.x, player.y - 30, "DISPENSER THÁO DỠ", "#ef4444");
+                }
+            }
+            let spawnX = player.x + (player.facing * 45);
+            let groundY = findGroundY(spawnX, player.y);
+            buildings.dispenser = { 
+                x: spawnX, 
+                y: groundY, 
+                hp: 150,
+                maxHp: 150,
+                level: 1
+            };
+            playSound('build');
+            addFloatingText(player.x, player.y - 30, "DISPENSER BUILT LV 1!", "#10b981");
+            updateHUD();
+        }
+
+        function updateHUD() {
+            document.getElementById('class-icon').innerText = activeClass.icon;
+            document.getElementById('class-icon').style.backgroundColor = TEAM_SKINS[currentTeam].primary;
+            document.getElementById('class-name').innerText = activeClass.name.toUpperCase();
+            document.getElementById('hp-bar').style.width = `${Math.max(0, (activeClass.hp / activeClass.maxHp) * 100)}%`;
+            document.getElementById('hp-text').innerText = `${Math.ceil(activeClass.hp)}/${activeClass.maxHp}`;
+            
+            if (player.isReloading) {
+                document.getElementById('ammo-text').innerText = `RELOADING...`;
+            } else {
+                document.getElementById('ammo-text').innerText = `${activeClass.ammo} / ${activeClass.maxAmmo}`;
+            }
+
+            const stickyStatus = document.getElementById('sticky-status');
+            if (currentClassKey === 'Demoman') {
+                stickyStatus.classList.remove('hidden');
+                let stickyReadiness = stickyBomb
+                    ? stickyBomb.armTimer > 0
+                        ? `ARMING ${(stickyBomb.armTimer / 60).toFixed(1)}s`
+                        : 'READY (E TO DETONATE)'
+                    : 'READY TO FIRE (E)';
+                stickyStatus.innerText = `Sticky ${activeClass.stickyAmmo} / ${activeClass.maxStickyAmmo} | ${stickyReadiness}`;
+            } else {
+                stickyStatus.classList.add('hidden');
+            }
+
+            const payloadHud = document.getElementById('payload-hud');
+            if (gameStarted && currentGameMode === 'Payload' && payloadCart) {
+                payloadHud.classList.remove('hidden');
+                let payloadSeconds = Math.ceil(payloadCart.timeRemaining / 60);
+                let payloadMinutes = Math.floor(payloadSeconds / 60);
+                let payloadSecondsRemainder = String(payloadSeconds % 60).padStart(2, '0');
+                document.getElementById('payload-time').innerText = `${payloadMinutes}:${payloadSecondsRemainder}`;
+                document.getElementById('payload-status').innerText = payloadCart.state;
+                document.getElementById('payload-progress').style.width = `${payloadCart.progress}%`;
+            } else {
+                payloadHud.classList.add('hidden');
+            }
+
+            const buildingHud = document.getElementById('building-hud');
+            if (currentClassKey === 'Engineer') {
+                buildingHud.classList.remove('hidden');
+                document.getElementById('sentry-status').innerText = buildings.sentry ? `Sentry (Lv.${buildings.sentry.level}): ${Math.ceil(buildings.sentry.hp)}HP` : "Sentry: Chưa xây (E)";
+                document.getElementById('dispenser-status').innerText = buildings.dispenser ? `Dispenser (Lv.${buildings.dispenser.level}): ${Math.ceil(buildings.dispenser.hp)}HP` : "Dispenser: Chưa xây (Q)";
+            } else {
+                buildingHud.classList.add('hidden');
+            }
+
+            const medicHud = document.getElementById('medic-hud');
+            if (currentClassKey === 'Medic') {
+                medicHud.classList.remove('hidden');
+                if (player.uberTimer > 0) {
+                    document.getElementById('medic-status').innerText = `UBER: ${Math.ceil(player.uberTimer / 60)}s`;
+                } else if (player.uberCooldown > 0) {
+                    document.getElementById('medic-status').innerText = `UBER CD: ${Math.ceil(player.uberCooldown / 60)}s`;
+                } else {
+                    document.getElementById('medic-status').innerText = 'UBER: SẴN SÀNG (E)';
+                }
+            } else {
+                medicHud.classList.add('hidden');
+            }
+
+            const spyHud = document.getElementById('spy-hud');
+            if (currentClassKey === 'Spy') {
+                spyHud.classList.remove('hidden');
+                let cloakSeconds = Math.ceil(player.cloakCharge / 60);
+                let rechargeSeconds = Math.ceil((600 - player.cloakCharge) / 20);
+                document.getElementById('spy-status').innerText = player.isCloaked
+                    ? `CLOAK: ${cloakSeconds}s`
+                    : player.cloakCharge >= 600
+                        ? 'Cloak: Sẵn sàng (E)'
+                        : `NẠP CLOAK: ${rechargeSeconds}s`;
+                document.getElementById('spy-cloak-bar').style.width = `${(player.cloakCharge / 600) * 100}%`;
+                document.getElementById('spy-cloak-bar').classList.toggle('bg-cyan-400', player.isCloaked);
+                document.getElementById('spy-cloak-bar').classList.toggle('bg-slate-400', !player.isCloaked);
+            } else {
+                spyHud.classList.add('hidden');
+            }
+        }
+
+        function addFloatingText(x, y, text, color) {
+            floatingTexts.push({ x, y, text, color, life: 40 });
+        }
+
+        function spawnSparks(x, y, color, count = 4) {
+            for (let spark = 0; spark < count; spark++) {
+                let angle = Math.random() * Math.PI * 2;
+                let speed = 1.5 + Math.random() * 4;
+                particles.push({
+                    type: 'spark',
+                    x, y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    r: Math.random() * 1.5 + 1,
+                    color: Math.random() < 0.35 ? '#fff7b2' : color,
+                    life: 8 + Math.floor(Math.random() * 8)
+                });
+            }
+        }
+
+        function applyRandomCrit(projectile) {
+            if (Math.random() >= 0.1) return false;
+            projectile.damage *= 3;
+            projectile.isCrit = true;
+            projectile.color = '#fde047';
+            return true;
+        }
+
+        function applyCriticalDamage(projectile) {
+            projectile.damage *= 3;
+            projectile.isCrit = true;
+            projectile.color = '#fde047';
+        }
+
+        function spawnMedkit() {
+            if (items.length >= 4 || platforms.length === 0) return;
+            let spawnPlatforms = platforms.filter(platform => platform.w > 60);
+            let platform = spawnPlatforms[Math.floor(Math.random() * spawnPlatforms.length)];
+            let x = platform.x + 18 + Math.random() * (platform.w - 36);
+            x = Math.max(SPAWN_ROOM.right + 30, Math.min(3800, x));
+            items.push({ x, y: platform.y - 17, w: 22, h: 18, bob: Math.random() * Math.PI * 2 });
+        }
+
+        function isInsideSpawnRoom(x, y) {
+            return x >= SPAWN_ROOM.left && x <= SPAWN_ROOM.right && y >= SPAWN_ROOM.top && y <= SPAWN_ROOM.floorY;
+        }
+
+        function isSpawnShotBlocked(targetX, targetY) {
+            let playerCenterX = player.x + player.w / 2;
+            let playerCenterY = player.y + player.h / 2;
+            return isInsideSpawnRoom(playerCenterX, playerCenterY) && !isInsideSpawnRoom(targetX, targetY);
+        }
+
+        function activateUbercharge() {
+            if (player.uberCooldown > 0) {
+                addFloatingText(player.x, player.y - 30, `UBER CD: ${Math.ceil(player.uberCooldown / 60)}s`, '#94a3b8');
+                return;
+            }
+
+            player.uberTimer = 480;
+            player.uberCooldown = 1800;
+            playSound('build');
+            addFloatingText(player.x, player.y - 30, 'UBERCHARGE!', '#facc15');
+            updateHUD();
+        }
+
+        function toggleSpyCloak() {
+            if (player.isCloaked) {
+                player.isCloaked = false;
+            } else if (player.cloakCharge > 0) {
+                player.isCloaked = true;
+            } else {
+                addFloatingText(player.x, player.y - 30, 'CLOAK ĐANG HỒI', '#94a3b8');
+                return;
+            }
+            playSound('build');
+            addFloatingText(player.x, player.y - 30, player.isCloaked ? 'CLOAK ON' : 'CLOAK OFF', '#cbd5e1');
+            updateHUD();
+        }
+
+        function spyBackstab() {
+            player.isCloaked = false;
+            player.cooldownTimer = activeClass.fireCooldown;
+            updateHUD();
+
+            const playerCenterX = player.x + player.w / 2;
+            const playerCenterY = player.y + player.h / 2;
+            const target = enemies
+                .filter(enemy => {
+                    const dx = enemy.x + enemy.w / 2 - playerCenterX;
+                    const dy = enemy.y + enemy.h / 2 - playerCenterY;
+                    return dx * player.facing >= -8 && Math.hypot(dx, dy) <= 76;
+                })
+                .sort((first, second) => {
+                    const firstDistance = Math.hypot(first.x + first.w / 2 - playerCenterX, first.y + first.h / 2 - playerCenterY);
+                    const secondDistance = Math.hypot(second.x + second.w / 2 - playerCenterX, second.y + second.h / 2 - playerCenterY);
+                    return firstDistance - secondDistance;
+                })[0];
+
+            if (!target) {
+                addFloatingText(playerCenterX, player.y - 20, 'BACKSTAB MISS', '#cbd5e1');
+                return;
+            }
+
+            target.hp -= 200;
+            target.vx = player.facing * 8;
+            target.vy = -5;
+            target.isGrounded = false;
+            addFloatingText(target.x, target.y - 20, 'BACKSTAB! -200', '#ef4444');
+            playSound('shoot_shotgun');
+            if (target.hp <= 0) target.dead = true;
+        }
+
+        function toggleStickyBomb() {
+            if (stickyBomb) {
+                if (stickyBomb.armTimer > 0) {
+                    addFloatingText(player.x, player.y - 30, `STICKY ARMING ${(stickyBomb.armTimer / 60).toFixed(1)}s`, '#c084fc');
+                    return;
+                }
+                let bombIndex = bullets.indexOf(stickyBomb);
+                if (bombIndex >= 0) bullets.splice(bombIndex, 1);
+                createExplosion(stickyBomb.x, stickyBomb.y, stickyBomb.explosionRadius, stickyBomb.damage, stickyBomb.selfDamage, stickyBomb.knockback);
+                stickyBomb = null;
+                addFloatingText(player.x, player.y - 30, "STICKY BOMB ĐÃ KÍCH NỔ!", "#f97316");
+                updateHUD();
+                return;
+            }
+
+            if (player.isReloading || activeClass.stickyAmmo <= 0) {
+                reloadWeapon();
+                return;
+            }
+
+            if (isSpawnShotBlocked(mouse.worldX, mouse.worldY)) {
+                addFloatingText(player.x, player.y - 20, 'SPAWN ROOM: KHÔNG THỂ BẮN RA NGOÀI', '#facc15');
+                return;
+            }
+
+            let spawnX = player.x + (player.facing === 1 ? player.w : 0);
+            let spawnY = player.y + 20;
+            let angle = Math.atan2(mouse.worldY - spawnY, mouse.worldX - spawnX);
+            activeClass.stickyAmmo--;
+            stickyBomb = {
+                x: spawnX,
+                y: spawnY,
+                vx: Math.cos(angle) * 12,
+                vy: Math.sin(angle) * 12 - 4,
+                damage: 80,
+                radius: 8,
+                color: '#a855f7',
+                type: 'sticky',
+                stuck: false,
+                armTimer: 30,
+                spawnRoomSide: isInsideSpawnRoom(player.x + player.w / 2, player.y + player.h / 2) ? 'inside' : 'outside',
+                explosionRadius: 70,
+                selfDamage: 10,
+                knockback: 10
+            };
+            let isCrit = applyRandomCrit(stickyBomb);
+            bullets.push(stickyBomb);
+            playSound('shoot_pistol');
+            addFloatingText(stickyBomb.x, stickyBomb.y - 20, isCrit ? 'CRIT STICKY x3' : 'STICKY ĐÃ PHÓNG (E ĐỂ NỔ)', isCrit ? '#fde047' : '#c084fc');
+            updateHUD();
+        }
+
+        function reflectProjectiles() {
+            const ammoCost = 20;
+            const reflectRadius = 150;
+            if (activeClass.ammo < ammoCost) {
+                addFloatingText(player.x + player.w / 2, player.y - 20, 'KHÔNG ĐỦ ĐẠN (CẦN 20)', '#f87171');
+                return;
+            }
+
+            activeClass.ammo -= ammoCost;
+            updateHUD();
+
+            let reflectedCount = 0;
+            let knockedBackCount = 0;
+            let playerCenterX = player.x + player.w / 2;
+            let playerCenterY = player.y + player.h / 2;
+            let reflectAngle = Math.atan2(mouse.worldY - playerCenterY, mouse.worldX - playerCenterX);
+
+            bullets.forEach(b => {
+                if (!b.owner || b.owner === player) return;
+                let distance = Math.hypot(b.x - playerCenterX, b.y - playerCenterY);
+                if (distance > reflectRadius) return;
+
+                let speed = Math.hypot(b.vx, b.vy) || 12;
+                b.vx = Math.cos(reflectAngle) * speed;
+                b.vy = Math.sin(reflectAngle) * speed;
+                if (b.type === 'rocket') b.angle = reflectAngle;
+                if (!b.isCrit) applyCriticalDamage(b);
+                b.owner = null;
+                b.reflected = true;
+                b.spawnRoomSide = isInsideSpawnRoom(playerCenterX, playerCenterY) ? 'inside' : 'outside';
+                spawnSparks(b.x, b.y, '#fde047', 6);
+                reflectedCount++;
+            });
+
+            enemies.forEach(en => {
+                let dx = en.x + en.w / 2 - playerCenterX;
+                let dy = en.y + en.h / 2 - playerCenterY;
+                let distance = Math.hypot(dx, dy);
+                if (distance > reflectRadius) return;
+
+                if (distance < 1) {
+                    dx = player.facing;
+                    distance = 1;
+                }
+                en.knockbackX = (en.knockbackX || 0) + (dx / distance) * 14;
+                en.vy = Math.min(en.vy, -6 + (dy / distance) * 2);
+                en.isGrounded = false;
+                knockedBackCount++;
+            });
+
+            if (reflectedCount > 0 || knockedBackCount > 0) {
+                playSound('flame');
+                let reflectText = reflectedCount > 0
+                    ? `CRIT REFLECT x${reflectedCount} | Quái ${knockedBackCount}`
+                    : `AIRBLAST! Quái ${knockedBackCount}`;
+                addFloatingText(playerCenterX, player.y - 20, reflectText, reflectedCount > 0 ? '#fde047' : '#fb923c');
+            } else {
+                addFloatingText(playerCenterX, player.y - 20, 'AIRBLAST!', '#fb923c');
+            }
+        }
+
+        function createExplosion(x, y, radius, damage, selfDamage, knockbackForce, spawnRoomOrigin = false) {
+            playSound('explosion');
+            
+            // Kích hoạt hiệu ứng rung màn hình (Camera Shake) mạnh mẽ theo khoảng cách tới vụ nổ
+            let playerDist = Math.hypot((player.x + player.w / 2) - x, (player.y + player.h / 2) - y);
+            if (playerDist < 400) {
+                shakeDuration = 20;
+                shakeIntensity = Math.max(2, 12 * (1 - playerDist / 400));
+            }
+
+            particles.push({ type: 'shockwave', x, y, r: 10, maxR: radius, life: 25, color: '#f97316' });
+
+            // Tạo các tia lửa và khói nổ
+            for (let i = 0; i < 25; i++) {
+                particles.push({
+                    x, y,
+                    vx: (Math.random() - 0.5) * 16,
+                    vy: (Math.random() - 0.5) * 16,
+                    r: Math.random() * 6 + 3,
+                    color: Math.random() > 0.5 ? '#f97316' : '#ef4444',
+                    life: 35
+                });
+            }
+
+            // Tạo các mảnh vỡ vật lý văng ra từ vụ nổ (Debris)
+            for (let i = 0; i < 8; i++) {
+                let angle = Math.random() * Math.PI * 2;
+                let speed = 4 + Math.random() * 10;
+                debris.push({
+                    x, y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 3,
+                    w: Math.random() * 8 + 4,
+                    h: Math.random() * 8 + 4,
+                    rotation: Math.random() * Math.PI,
+                    vRot: (Math.random() - 0.5) * 0.2,
+                    color: Math.random() > 0.5 ? '#64748b' : '#334155',
+                    life: 60
+                });
+            }
+
+            // Check damage to enemies with explosion physical impulse (knockback)
+            enemies.forEach(en => {
+                if (spawnRoomOrigin && !isInsideSpawnRoom(en.x + en.w / 2, en.y + en.h / 2)) return;
+                let dist = Math.hypot((en.x + en.w/2) - x, (en.y + en.h/2) - y);
+                if (dist < radius + en.w / 2) {
+                    en.hp -= damage;
+                    addFloatingText(en.x, en.y - 20, `-${damage}`, '#f97316');
+                    
+                    // Lực đẩy vật lý hất văng quái vật khỏi tâm nổ
+                    let angle = Math.atan2((en.y + en.h/2) - y, (en.x + en.w/2) - x);
+                    en.vx = Math.cos(angle) * (knockbackForce * 1.2);
+                    en.vy = Math.sin(angle) * (knockbackForce * 1.2) - 4;
+                    en.isGrounded = false;
+
+                    if (en.hp <= 0) en.dead = true;
+                }
+            });
+
+            // Check self damage and knockback
+            let playerInsideSpawnRoom = isInsideSpawnRoom(player.x + player.w / 2, player.y + player.h / 2);
+            if (playerDist < radius + player.w && (!spawnRoomOrigin || playerInsideSpawnRoom)) {
+                if (player.uberTimer <= 0) {
+                    activeClass.hp -= selfDamage;
+                    updateHUD();
+                    addFloatingText(player.x, player.y - 20, `-${selfDamage} (Self)`, '#ef4444');
+                }
+                let angle = Math.atan2((player.y + player.h / 2) - y, (player.x + player.w / 2) - x);
+                player.vx += Math.cos(angle) * knockbackForce;
+                player.vy += Math.sin(angle) * knockbackForce;
+                player.isGrounded = false;
+
+                if (activeClass.hp <= 0) {
+                    respawnPlayer();
+                }
+            }
+        }
+
+        function respawnPlayer() {
+            showModal("BẠN ĐÃ HY SINH!", "Hồi sinh tại căn cứ...");
+            activeClass.hp = activeClass.maxHp;
+            player.x = 150;
+            player.y = SPAWN_ROOM.floorY - player.h;
+            player.vx = 0;
+            player.vy = 0;
+            player.hasExitedSpawnRoom = false;
+            updateHUD();
+        }
+
+        // --- Map Initialization ---
+        function initMap() {
+            platforms = [
+                // Ground Floor (Continuous solid floor so entities never fall into void)
+                { x: -500, y: 600, w: 4500, h: 120 },
+
+                // Sector 1: Training grounds & low platforms
+                { x: 350, y: 480, w: 220, h: 20 },
+                { x: 700, y: 400, w: 200, h: 20 },
+                { x: 500, y: 300, w: 150, h: 20 },
+
+                // Sector 2: Mid battle arena with high sniper towers
+                { x: 1100, y: 460, w: 250, h: 20 },
+                { x: 1450, y: 360, w: 280, h: 20 },
+                { x: 1300, y: 240, w: 160, h: 20 },
+                { x: 1800, y: 440, w: 220, h: 20 },
+
+                // Sector 3: Advanced multi-tier fortresses
+                { x: 2100, y: 500, w: 200, h: 20 },
+                { x: 2400, y: 380, w: 250, h: 20 },
+                { x: 2750, y: 280, w: 220, h: 20 },
+                { x: 3050, y: 440, w: 250, h: 20 }
+            ];
+
+            // Spawn diverse enemies across the map layout
+            enemies = [];
+            let enemyTypes = ['soldier', 'pyro'];
+            for (let i = 0; i < 14; i++) {
+                enemies.push({
+                    x: ENEMY_SPAWN_ROOM.left + 28 + (i % 7) * 50,
+                    y: ENEMY_SPAWN_ROOM.floorY - 56 - Math.floor(i / 7) * 56,
+                    w: 32,
+                    h: 56,
+                    vx: -2,
+                    vy: 0,
+                    hp: 120,
+                    maxHp: 120,
+                    type: enemyTypes[i % enemyTypes.length],
+                    shootTimer: 0,
+                    hasExitedEnemySpawnRoom: false
+                });
+            }
+            items = [];
+            medkitSpawnTimer = 0;
+            for (let medkitIndex = 0; medkitIndex < 3; medkitIndex++) spawnMedkit();
+        }
+        initMap();
+
+        // --- Weapon Shooting Logic ---
+        function shootWeapon() {
+            if (player.isCloaked || player.isReloading || player.cooldownTimer > 0) return;
+
+            // Nếu là Engineer đang cầm Shotgun và đứng sát Sentry hoặc Dispenser, nhấn bắn (hoặc cờ lê) sẽ hồi máu/sửa chữa công trình!
+            if (currentClassKey === 'Engineer') {
+                let hitTarget = false;
+                [buildings.sentry, buildings.dispenser].forEach(b => {
+                    if (b) {
+                        let dist = Math.hypot((player.x + player.w/2) - b.x, (player.y + player.h/2) - b.y);
+                        if (dist < 60) {
+                            b.hp = Math.min(b.maxHp, b.hp + 35);
+                            playSound('build');
+                            addFloatingText(b.x, b.y - 40, "SỬA CHỮA +35 HP", "#10b981");
+                            hitTarget = true;
+                            updateHUD();
+                        }
+                    }
+                });
+                if (hitTarget) {
+                    player.cooldownTimer = 20;
+                    return;
+                }
+            }
+
+            if (activeClass.ammo <= 0) {
+                reloadWeapon();
+                return;
+            }
+
+            if (isSpawnShotBlocked(mouse.worldX, mouse.worldY)) {
+                addFloatingText(player.x, player.y - 20, 'SPAWN ROOM: KHÔNG THỂ BẮN RA NGOÀI', '#facc15');
+                return;
+            }
+
+            let spawnX = player.x + (player.facing === 1 ? player.w : 0);
+            let spawnY = player.y + 20;
+            player.cooldownTimer = activeClass.fireCooldown;
+            let angle = Math.atan2(mouse.worldY - spawnY, mouse.worldX - spawnX);
+            let firstProjectileIndex = bullets.length;
+
+            switch (activeClass.weapon) {
+                case 'scattergun': // Scout
+                    activeClass.ammo--;
+                    playSound('shoot_shotgun');
+                    for (let pellet = 0; pellet < 6; pellet++) {
+                        let spreadAngle = angle + (pellet - 2.5) * 0.09;
+                        bullets.push({
+                            x: spawnX, y: spawnY,
+                            vx: Math.cos(spreadAngle) * 14,
+                            vy: Math.sin(spreadAngle) * 14,
+                            damage: 7,
+                            radius: 3,
+                            color: '#facc15',
+                            type: 'bullet'
+                        });
+                    }
+                    break;
+
+                case 'flamethrower': // Pyro (Tốn ít đạn hơn: 1 viên mỗi nhịp)
+                    activeClass.ammo = Math.max(0, activeClass.ammo - 1);
+                    playSound('flame');
+                    for (let i = 0; i < 3; i++) {
+                        let spreadAngle = angle + (Math.random() - 0.5) * 0.3;
+                        bullets.push({
+                            x: spawnX, y: spawnY,
+                            vx: Math.cos(spreadAngle) * (8 + Math.random() * 4),
+                            vy: Math.sin(spreadAngle) * (8 + Math.random() * 4),
+                            damage: 4,
+                            radius: 12 + Math.random() * 8,
+                            color: Math.random() > 0.5 ? '#f97316' : '#ef4444',
+                            type: 'flame',
+                            life: 25
+                        });
+                    }
+                    break;
+
+                case 'rocket': // Soldier
+                    activeClass.ammo--;
+                    playSound('shoot_pistol');
+                    bullets.push({
+                        x: spawnX, y: spawnY,
+                        vx: Math.cos(angle) * 10,
+                        vy: Math.sin(angle) * 10,
+                        angle: angle,
+                        damage: 90,
+                        w: 20, h: 8, // Hình chữ nhật cho Rocket
+                        color: '#3b82f6',
+                        type: 'rocket',
+                        explosionRadius: 80,
+                        selfDamage: 10,
+                        knockback: 12
+                    });
+                    break;
+
+                case 'grenade': // Demoman
+                    activeClass.ammo--;
+                    playSound('shoot_pistol');
+                    bullets.push({
+                        x: spawnX, y: spawnY,
+                        vx: Math.cos(angle) * 12,
+                        vy: Math.sin(angle) * 12 - 4,
+                        damage: 80,
+                        radius: 6,
+                        color: '#a855f7',
+                        type: 'grenade',
+                        timer: 120, // 2 seconds at 60fps
+                        bounced: false,
+                        explosionRadius: 70,
+                        selfDamage: 10,
+                        knockback: 10
+                    });
+                    break;
+
+                case 'minigun': // Heavy
+                    activeClass.ammo--;
+                    playSound('minigun');
+                    bullets.push({
+                        x: spawnX, y: spawnY,
+                        vx: Math.cos(angle) * 18 + (Math.random() - 0.5) * 2,
+                        vy: Math.sin(angle) * 18 + (Math.random() - 0.5) * 2,
+                        damage: 12,
+                        radius: 3,
+                        color: '#ef4444',
+                        type: 'bullet'
+                    });
+                    break;
+
+                case 'sniper': // Sniper
+                    activeClass.ammo--;
+                    playSound('shoot_shotgun');
+                    let isHeadshot = Math.random() < 0.4; // Simulated headshot chance
+                    let dmg = isHeadshot ? 150 : 50;
+                    bullets.push({
+                        x: spawnX, y: spawnY,
+                        vx: Math.cos(angle) * 30,
+                        vy: Math.sin(angle) * 30,
+                        damage: dmg,
+                        isHeadshot: isHeadshot,
+                        radius: 3,
+                        color: '#10b981',
+                        type: 'sniper'
+                    });
+                    break;
+
+                case 'syringe': // Medic Syringe Gun
+                    activeClass.ammo--;
+                    playSound('shoot_pistol');
+                    bullets.push({
+                        x: spawnX, y: spawnY,
+                        vx: Math.cos(angle) * 15,
+                        vy: Math.sin(angle) * 15,
+                        damage: 8,
+                        radius: 3,
+                        color: '#fb7185',
+                        type: 'syringe'
+                    });
+                    break;
+
+                case 'revolver': // Spy Revolver
+                    activeClass.ammo--;
+                    playSound('shoot_pistol');
+                    bullets.push({
+                        x: spawnX, y: spawnY,
+                        vx: Math.cos(angle) * 22,
+                        vy: Math.sin(angle) * 22,
+                        damage: 35,
+                        radius: 3,
+                        color: '#cbd5e1',
+                        type: 'bullet'
+                    });
+                    break;
+
+                case 'shotgun': // Engineer
+                    activeClass.ammo--;
+                    playSound('shoot_shotgun');
+                    for (let i = -2; i <= 2; i++) {
+                        let spreadAngle = angle + i * 0.08;
+                        bullets.push({
+                            x: spawnX, y: spawnY,
+                            vx: Math.cos(spreadAngle) * 14,
+                            vy: Math.sin(spreadAngle) * 14,
+                            damage: 20,
+                            radius: 3,
+                            color: '#f59e0b',
+                            type: 'bullet'
+                        });
+                    }
+                    break;
+            }
+                let shotProjectiles = bullets.slice(firstProjectileIndex);
+            let shotSpawnSide = isInsideSpawnRoom(player.x + player.w / 2, player.y + player.h / 2) ? 'inside' : 'outside';
+            shotProjectiles.forEach(projectile => {
+                projectile.spawnRoomSide = shotSpawnSide;
+                projectile.spawnRoomOrigin = shotSpawnSide === 'inside';
+            });
+                if (shotProjectiles.length > 0 && Math.random() < 0.1) {
+                    shotProjectiles.forEach(applyCriticalDamage);
+                    spawnSparks(spawnX + Math.cos(angle) * 8, spawnY + Math.sin(angle) * 8, '#fde047', 10);
+                    addFloatingText(spawnX, spawnY - 18, 'CRIT! x3', '#fde047');
+                }
+            if (['scattergun', 'rocket', 'minigun', 'sniper', 'shotgun', 'revolver'].includes(activeClass.weapon)) {
+                let sparkCount = activeClass.weapon === 'minigun' ? 2 : 5;
+                spawnSparks(spawnX + Math.cos(angle) * 8, spawnY + Math.sin(angle) * 8, activeClass.color, sparkCount);
+            }
+            updateHUD();
+        }
+
+        // --- Main Game Loop ---
+        function update() {
+            // Handle Camera Shake decay
+            if (shakeDuration > 0) {
+                shakeDuration--;
+            } else {
+                shakeIntensity = 0;
+            }
+
+            let refreshMedicHud = false;
+            if (player.uberTimer > 0) {
+                player.uberTimer--;
+                if (player.uberTimer === 0 || player.uberTimer % 60 === 0) refreshMedicHud = true;
+            }
+            if (player.uberCooldown > 0) {
+                player.uberCooldown--;
+                if (player.uberCooldown === 0 || player.uberCooldown % 60 === 0) refreshMedicHud = true;
+            }
+            let refreshSpyHud = false;
+            if (player.isCloaked) {
+                player.cloakCharge = Math.max(0, player.cloakCharge - 1);
+                if (player.cloakCharge === 0) {
+                    player.isCloaked = false;
+                    addFloatingText(player.x, player.y - 30, 'HẾT CLOAK', '#94a3b8');
+                    refreshSpyHud = true;
+                }
+            } else if (player.cloakCharge < 600) {
+                player.cloakCharge = Math.min(600, player.cloakCharge + 1 / 3);
+            }
+            if (currentClassKey === 'Spy') {
+                player.spyHudFrameCounter++;
+                if (player.spyHudFrameCounter >= 60) {
+                    player.spyHudFrameCounter = 0;
+                    refreshSpyHud = true;
+                }
+            } else {
+                player.spyHudFrameCounter = 0;
+            }
+            if (currentClassKey === 'Medic') {
+                player.medicHealTimer++;
+                if (player.medicHealTimer >= 60) {
+                    player.medicHealTimer = 0;
+                    if (activeClass.hp < activeClass.maxHp) {
+                        activeClass.hp = Math.min(activeClass.maxHp, activeClass.hp + 4);
+                        refreshMedicHud = true;
+                    }
+                }
+            } else {
+                player.medicHealTimer = 0;
+            }
+            if (refreshMedicHud || refreshSpyHud) updateHUD();
+
+            // Giảm bộ đếm cooldown bắn theo khung hình
+            if (player.cooldownTimer > 0) {
+                player.cooldownTimer--;
+            }
+
+            // Handle Reloading Timer
+            if (player.isReloading) {
+                player.reloadTimer--;
+                if (player.reloadTimer <= 0) {
+                    player.isReloading = false;
+                    activeClass.ammo = activeClass.maxAmmo;
+                    if (currentClassKey === 'Demoman') activeClass.stickyAmmo = activeClass.maxStickyAmmo;
+                    updateHUD();
+                    addFloatingText(player.x, player.y - 30, "ĐÃ NẠP XONG!", "#10b981");
+                }
+            }
+
+            if (stickyBomb && stickyBomb.armTimer > 0) {
+                stickyBomb.armTimer--;
+                if (currentClassKey === 'Demoman' && (stickyBomb.armTimer === 0 || stickyBomb.armTimer % 6 === 0)) updateHUD();
+            }
+
+            // Player Movement & Heavy Weapon / Sniper Firing Slowdown Check
+            let currentSpeed = activeClass.speed;
+            let isFiringHeavy = (currentClassKey === 'Heavy' && mouse.down && activeClass.ammo > 0 && !player.isReloading);
+            let isAimingSniper = (currentClassKey === 'Sniper' && mouse.down && activeClass.ammo > 0 && !player.isReloading);
+            
+            if (isFiringHeavy) {
+                currentSpeed *= 0.35; // Heavy bị giảm tốc độ di chuyển còn 35% khi đang xả Minigun
+            } else if (isAimingSniper) {
+                currentSpeed = 0; // Sniper dừng hoàn toàn di chuyển khi bấm chuột để bắn ngắm
+            }
+
+            if (keys['a'] || keys['arrowleft']) {
+                player.vx = -currentSpeed;
+                player.facing = -1;
+            } else if (keys['d'] || keys['arrowright']) {
+                player.vx = currentSpeed;
+                player.facing = 1;
+            } else {
+                player.vx *= 0.8;
+            }
+
+            // Jumping
+            if ((keys['w'] || keys[' ']) && player.isGrounded && !player.isReloading) {
+                player.vy = activeClass.jump;
+                player.isGrounded = false;
+                player.jumpCount = 1;
+                player.jumpPressed = false;
+            } else if (player.jumpPressed && currentClassKey === 'Scout' && player.jumpCount === 1 && !player.isReloading) {
+                player.vy = activeClass.jump;
+                player.jumpCount = 2;
+                player.jumpPressed = false;
+                addFloatingText(player.x + player.w / 2, player.y - 20, 'DOUBLE JUMP!', '#eab308');
+            } else if (player.jumpPressed) {
+                player.jumpPressed = false;
+            }
+
+            // Gravity
+            player.vy += 0.5;
+
+            // Apply velocity
+            player.x += player.vx;
+            player.y += player.vy;
+
+            let spawnDoorTop = SPAWN_ROOM.top + 64;
+            let playerFitsSpawnDoor = player.y >= spawnDoorTop && player.y + player.h <= SPAWN_ROOM.floorY + 1;
+            if (!player.hasExitedSpawnRoom && player.x >= SPAWN_ROOM.right && playerFitsSpawnDoor) {
+                player.hasExitedSpawnRoom = true;
+                addFloatingText(player.x, player.y - 24, 'SPAWN ROOM LOCKED', '#facc15');
+            }
+            let spawnRoomPlayerMinX = SPAWN_ROOM.right;
+            if (player.hasExitedSpawnRoom && player.x < spawnRoomPlayerMinX) {
+                player.x = spawnRoomPlayerMinX;
+                if (player.vx < 0) player.vx = 0;
+            } else if (!player.hasExitedSpawnRoom) {
+                let maxSpawnRoomX = playerFitsSpawnDoor ? SPAWN_ROOM.right : SPAWN_ROOM.right - player.w;
+                player.x = Math.max(SPAWN_ROOM.left + 10, Math.min(maxSpawnRoomX, player.x));
+            }
+
+            let playerMaxXBeforeEnemySpawn = ENEMY_SPAWN_ROOM.left - player.w;
+            if (player.x > playerMaxXBeforeEnemySpawn) {
+                player.x = playerMaxXBeforeEnemySpawn;
+                if (player.vx > 0) player.vx = 0;
+            }
+
+            if (!player.hasExitedSpawnRoom && player.x < SPAWN_ROOM.right && player.y < SPAWN_ROOM.top) {
+                player.y = SPAWN_ROOM.top;
+                if (player.vy < 0) player.vy = 0;
+            }
+
+            // Kiểm tra ngã xuống vực (hư vô) dưới đáy bản đồ là chết ngay lập tức
+            if (player.y > 750) {
+                respawnPlayer();
+            }
+
+            // Platform Collisions
+            player.isGrounded = false;
+            platforms.forEach(p => {
+                if (player.x + player.w > p.x && player.x < p.x + p.w &&
+                    player.y + player.h >= p.y && player.y + player.h - player.vy <= p.y + 10) {
+                    player.y = p.y - player.h;
+                    player.vy = 0;
+                    player.isGrounded = true;
+                    player.jumpCount = 0;
+                }
+            });
+
+            for (let itemIndex = items.length - 1; itemIndex >= 0; itemIndex--) {
+                let medkit = items[itemIndex];
+                medkit.bob += 0.06;
+                let playerCenterX = player.x + player.w / 2;
+                let playerCenterY = player.y + player.h / 2;
+                if (Math.abs(playerCenterX - medkit.x) < player.w / 2 + medkit.w / 2 &&
+                    Math.abs(playerCenterY - (medkit.y + medkit.h / 2)) < player.h / 2 + medkit.h / 2 &&
+                    activeClass.hp < activeClass.maxHp) {
+                    let healed = Math.min(50, activeClass.maxHp - activeClass.hp);
+                    activeClass.hp += healed;
+                    items.splice(itemIndex, 1);
+                    playSound('build');
+                    addFloatingText(player.x, player.y - 20, `+${Math.ceil(healed)} HP`, '#34d399');
+                    updateHUD();
+                }
+            }
+
+            medkitSpawnTimer++;
+            if (medkitSpawnTimer >= 600) {
+                medkitSpawnTimer = 0;
+                spawnMedkit();
+            }
+
+            // Continuous Shooting for automatic weapons (Pyro & Heavy)
+            if (mouse.down && !player.isReloading) {
+                if (activeClass.weapon === 'flamethrower' || activeClass.weapon === 'minigun' || activeClass.weapon === 'syringe') {
+                    player.shootTimer++;
+                    let fireRate = activeClass.fireCooldown;
+                    if (player.shootTimer >= fireRate) {
+                        shootWeapon();
+                        player.shootTimer = 0;
+                    }
+                }
+            } else {
+                player.shootTimer = 0;
+            }
+
+            // Update Bullets
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                let b = bullets[i];
+                if (b.type === 'grenade') {
+                    b.vy += 0.4;
+                    b.timer--;
+                } else if (b.type === 'flame') {
+                    b.life--;
+                    b.radius += 0.5;
+                    if (b.life <= 0) {
+                        bullets.splice(i, 1);
+                        continue;
+                    }
+                }
+                let previousX = b.x;
+                let previousY = b.y;
+                b.x += b.vx;
+                b.y += b.vy;
+
+                if (b.spawnRoomSide === undefined) {
+                    b.spawnRoomSide = isInsideSpawnRoom(previousX, previousY) ? 'inside' : 'outside';
+                }
+                if (b.spawnRoomOrigin === undefined) b.spawnRoomOrigin = b.spawnRoomSide === 'inside';
+                let isNowInsideSpawnRoom = isInsideSpawnRoom(b.x, b.y);
+                if (b.spawnRoomSide === 'outside' && isNowInsideSpawnRoom) {
+                    if (stickyBomb === b) stickyBomb = null;
+                    bullets.splice(i, 1);
+                    continue;
+                }
+                if (b.spawnRoomSide === 'inside' && !isNowInsideSpawnRoom) {
+                    b.x = previousX;
+                    b.y = previousY;
+                    if (b.type === 'grenade') {
+                        if (b.x <= SPAWN_ROOM.left || b.x >= SPAWN_ROOM.right) b.vx *= -0.6;
+                        if (b.y <= SPAWN_ROOM.top || b.y >= SPAWN_ROOM.floorY) b.vy *= -0.6;
+                        if (b.timer <= 0) {
+                            createExplosion(b.x, b.y, b.explosionRadius, b.damage, b.selfDamage, b.knockback, b.spawnRoomOrigin);
+                            bullets.splice(i, 1);
+                        }
+                    } else if (b.type === 'rocket') {
+                        spawnSparks(b.x, b.y, '#facc15', 8);
+                        createExplosion(b.x, b.y, b.explosionRadius, b.damage, b.selfDamage, b.knockback, b.spawnRoomOrigin);
+                        bullets.splice(i, 1);
+                    } else if (b.type === 'sticky') {
+                        b.vx = 0;
+                        b.vy = 0;
+                        b.stuck = true;
+                        spawnSparks(b.x, b.y, '#c084fc', 6);
+                    } else {
+                        bullets.splice(i, 1);
+                    }
+                    continue;
+                }
+
+                if (b.type === 'sticky') {
+                    if (!b.stuck) {
+                        b.vy += 0.4;
+                        let hitMovingTarget = enemies.some(en =>
+                            b.x + b.radius > en.x && b.x - b.radius < en.x + en.w &&
+                            b.y + b.radius > en.y && b.y - b.radius < en.y + en.h
+                        ) || [buildings.sentry, buildings.dispenser].some(building => {
+                            if (!building) return false;
+                            let halfWidth = building === buildings.sentry ? 22 : 32 + building.level * 4;
+                            let height = building === buildings.sentry ? 44 : 30 + building.level * 8;
+                            return b.x + b.radius > building.x - halfWidth && b.x - b.radius < building.x + halfWidth &&
+                                b.y + b.radius > building.y - height && b.y - b.radius < building.y;
+                        });
+
+                        if (hitMovingTarget) {
+                            b.x = previousX;
+                            b.y = previousY;
+                            b.vx *= -0.6;
+                            b.vy = -Math.abs(b.vy) * 0.6;
+                        } else {
+                            let hitPlatform = platforms.find(platform =>
+                                b.x + b.radius > platform.x && b.x - b.radius < platform.x + platform.w &&
+                                b.y + b.radius > platform.y && b.y - b.radius < platform.y + platform.h
+                            );
+                            if (hitPlatform) {
+                                let penetrations = [
+                                    { side: 'top', amount: b.y + b.radius - hitPlatform.y },
+                                    { side: 'bottom', amount: hitPlatform.y + hitPlatform.h - (b.y - b.radius) },
+                                    { side: 'left', amount: b.x + b.radius - hitPlatform.x },
+                                    { side: 'right', amount: hitPlatform.x + hitPlatform.w - (b.x - b.radius) }
+                                ];
+                                let impactSide = penetrations.reduce((shallowest, penetration) => penetration.amount < shallowest.amount ? penetration : shallowest);
+                                if (impactSide.side === 'top') b.y = hitPlatform.y - b.radius;
+                                if (impactSide.side === 'bottom') b.y = hitPlatform.y + hitPlatform.h + b.radius;
+                                if (impactSide.side === 'left') b.x = hitPlatform.x - b.radius;
+                                if (impactSide.side === 'right') b.x = hitPlatform.x + hitPlatform.w + b.radius;
+                                b.vx = 0;
+                                b.vy = 0;
+                                b.stuck = true;
+                                spawnSparks(b.x, b.y, '#c084fc', 6);
+                                addFloatingText(b.x, b.y - 12, 'STICKY', '#c084fc');
+                            }
+                        }
+                    }
+                    if (b.x < camera.x - 200 || b.x > camera.x + canvas.width + 200 ||
+                        b.y < camera.y - 200 || b.y > camera.y + canvas.height + 100) {
+                        if (stickyBomb === b) stickyBomb = null;
+                        bullets.splice(i, 1);
+                    }
+                    continue;
+                }
+
+                // Grenade gravity & bounce
+                if (b.type === 'grenade') {
+                    // Check platform bounce
+                    platforms.forEach(p => {
+                        if (b.x > p.x && b.x < p.x + p.w && Math.abs(b.y - p.y) < 8) {
+                            b.vy = -b.vy * 0.6; // Bounce
+                            if (!b.hasBouncedOnce) {
+                                b.damage *= 0.75; // Bounce reduces damage by 25% only once
+                                b.hasBouncedOnce = true;
+                            }
+                            b.bounced = true;
+                        }
+                    });
+                    if (b.timer <= 0) {
+                        createExplosion(b.x, b.y, b.explosionRadius, b.damage, b.selfDamage, b.knockback, b.spawnRoomOrigin);
+                        bullets.splice(i, 1);
+                        continue;
+                    }
+                }
+
+                // Rocket Explosion check
+                if (b.type === 'rocket') {
+                    // Tạo khói và trail lửa liên tục sau đuôi Rocket
+                    if (Math.random() < 0.8) {
+                        particles.push({
+                            x: b.x - b.vx * 0.5,
+                            y: b.y - b.vy * 0.5,
+                            vx: (Math.random() - 0.5) * 1.5,
+                            vy: (Math.random() - 0.5) * 1.5,
+                            r: Math.random() * 5 + 3,
+                            color: Math.random() > 0.5 ? '#f97316' : '#64748b', // Cam lửa hoặc khói xám
+                            life: 20
+                        });
+                    }
+
+                    let hitWall = platforms.some(p => b.x > p.x && b.x < p.x + p.w && b.y > p.y && b.y < p.y + p.h);
+                    let hitEnemy = enemies.some(en =>
+                        b.x > en.x && b.x < en.x + en.w && b.y > en.y && b.y < en.y + en.h
+                        && (!b.spawnRoomOrigin || isInsideSpawnRoom(en.x + en.w / 2, en.y + en.h / 2))
+                    );
+                    if (hitWall || hitEnemy) {
+                        spawnSparks(b.x, b.y, '#facc15', 8);
+                        createExplosion(b.x, b.y, b.explosionRadius, b.damage, b.selfDamage, b.knockback, b.spawnRoomOrigin);
+                        bullets.splice(i, 1);
+                        continue;
+                    }
+                }
+
+                // Check collision with enemies
+                let removed = false;
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    let en = enemies[j];
+                    if (b.owner) continue;
+                    if (b.spawnRoomOrigin && !isInsideSpawnRoom(en.x + en.w / 2, en.y + en.h / 2)) continue;
+                    if (b.x > en.x && b.x < en.x + en.w && b.y > en.y && b.y < en.y + en.h) {
+                        let finalDmg = b.damage;
+                        if (b.type === 'grenade') {
+                            createExplosion(b.x, b.y, b.explosionRadius, b.damage, b.selfDamage, b.knockback, b.spawnRoomOrigin);
+                        } else if (b.type === 'rocket') {
+                            // Handled above or direct explosion
+                            createExplosion(b.x, b.y, b.explosionRadius, b.damage, b.selfDamage, b.knockback, b.spawnRoomOrigin);
+                        } else {
+                            en.hp -= finalDmg;
+                            if (b.type === 'flame') {
+                                en.burnTimer = 180;
+                                en.burnDamage = b.isCrit ? 6 : 2;
+                            }
+                            addFloatingText(en.x, en.y - 20, b.isHeadshot ? `HEADSHOT! -${finalDmg}` : `-${finalDmg}`, b.isHeadshot ? '#10b981' : '#facc15');
+                            if (en.hp <= 0) en.dead = true;
+                        }
+
+                        if (b.type !== 'flame') {
+                            bullets.splice(i, 1);
+                            removed = true;
+                            break;
+                        }
+                    }
+                }
+                if (removed) continue;
+
+                // Out of bounds bullet cleanup
+                if (b.x < camera.x - 200 || b.x > camera.x + canvas.width + 200 ||
+                    b.y < camera.y - 200 || b.y > camera.y + canvas.height + 100) {
+                    bullets.splice(i, 1);
+                }
+            }
+
+            // Update Enemies
+            for (let j = enemies.length - 1; j >= 0; j--) {
+                let en = enemies[j];
+                if (en.dead) {
+                    enemies.splice(j, 1);
+                    continue;
+                }
+
+                if (en.burnTimer > 0) {
+                    en.burnTimer--;
+                    en.burnTickTimer = (en.burnTickTimer || 30) - 1;
+                    if (en.burnTickTimer <= 0) {
+                        let burnDamage = en.burnDamage || 2;
+                        en.hp -= burnDamage;
+                        en.burnTickTimer = 30;
+                        addFloatingText(en.x, en.y - 20, `-${burnDamage} BURN`, '#f97316');
+                        if (en.hp <= 0) en.dead = true;
+                    }
+                }
+                
+                // Enemies leave their spawn before acquiring the player.
+                if (en.x < SPAWN_ROOM.right) {
+                    en.x = SPAWN_ROOM.right;
+                    en.vx = 0;
+                    en.knockbackX = 0;
+                }
+                let canSeePlayer = en.hasExitedEnemySpawnRoom && !player.isCloaked && player.hasExitedSpawnRoom;
+                let xDiff = player.x - en.x;
+                if (!en.hasExitedEnemySpawnRoom) {
+                    en.vx = -2;
+                    en.wanderTimer = 0;
+                } else if (canSeePlayer) {
+                    en.wanderTimer = 0;
+                    en.vx = Math.abs(xDiff) > 15 ? (xDiff > 0 ? 1.5 : -1.5) : 0;
+                } else {
+                    en.wanderTimer = (en.wanderTimer || 0) - 1;
+                    if (en.wanderTimer <= 0) {
+                        let wanderChoices = [-1, 0, 1];
+                        en.wanderDirection = wanderChoices[Math.floor(Math.random() * wanderChoices.length)];
+                        en.wanderTimer = 45 + Math.floor(Math.random() * 105);
+                    }
+                    en.vx = en.wanderDirection * 1.2;
+                }
+
+                // Kẻ địch bị chặn bởi Sentry và Dispenser (Va chạm vật lý)
+                [buildings.sentry, buildings.dispenser].forEach(b => {
+                    if (b) {
+                        // Kẻ địch va chạm ngang với building
+                        if (en.x + en.w > b.x - 18 && en.x < b.x + 18 &&
+                            en.y + en.h > b.y - 36 && en.y < b.y) {
+                            if (en.vx > 0) {
+                                en.x = (b.x - 18) - en.w;
+                            } else if (en.vx < 0) {
+                                en.x = b.x + 18;
+                            }
+
+                            // Kẻ địch tấn công và phá hủy Sentry hoặc Dispenser khi đứng sát
+                            b.hp -= 0.8;
+                            addFloatingText(b.x, b.y - 45, `-1`, '#ef4444');
+                            
+                            // Nếu building bị tiêu diệt (HP <= 0), xóa nó
+                            if (b.hp <= 0) {
+                                if (b === buildings.sentry) {
+                                    buildings.sentry = null;
+                                    addFloatingText(player.x, player.y - 30, "SENTRY ĐÃ BỊ PHÁ HỦY!", "#ef4444");
+                                } else {
+                                    buildings.dispenser = null;
+                                    addFloatingText(player.x, player.y - 30, "DISPENSER ĐÃ BỊ PHÁ HỦY!", "#ef4444");
+                                }
+                                updateHUD();
+                            }
+                        }
+                    }
+                });
+
+                // Check if enemy needs to jump (if player is higher or obstacle in front)
+                let wallAhead = canSeePlayer && platforms.some(p => 
+                    en.x + (en.vx > 0 ? en.w + 10 : -10) > p.x && 
+                    en.x + (en.vx > 0 ? en.w + 10 : -10) < p.x + p.w &&
+                    en.y + en.h > p.y && en.y < p.y + p.h
+                );
+
+                if (wallAhead && en.isGrounded) {
+                    en.vy = -8;
+                    en.isGrounded = false;
+                }
+
+                en.vy += 0.5;
+                en.x += en.vx + (en.knockbackX || 0);
+                en.knockbackX = (en.knockbackX || 0) * 0.82;
+                if (Math.abs(en.knockbackX) < 0.2) en.knockbackX = 0;
+                if (!en.hasExitedEnemySpawnRoom && en.x + en.w <= ENEMY_SPAWN_ROOM.left) {
+                    en.hasExitedEnemySpawnRoom = true;
+                    en.x = ENEMY_SPAWN_ROOM.left - en.w;
+                } else if (en.hasExitedEnemySpawnRoom && en.x + en.w > ENEMY_SPAWN_ROOM.left) {
+                    en.x = ENEMY_SPAWN_ROOM.left - en.w;
+                    if (en.vx > 0) en.vx = 0;
+                    en.knockbackX = 0;
+                }
+                if (en.x < SPAWN_ROOM.right) {
+                    en.x = SPAWN_ROOM.right;
+                    en.knockbackX = 0;
+                }
+                en.y += en.vy;
+
+                // Enemy platform collisions
+                en.isGrounded = false;
+                platforms.forEach(p => {
+                    if (en.x + en.w > p.x && en.x < p.x + p.w &&
+                        en.y + en.h >= p.y && en.y + en.h - en.vy <= p.y + 10) {
+                        en.y = p.y - en.h;
+                        en.vy = 0;
+                        en.isGrounded = true;
+                    }
+                });
+
+                // Enemy shoots player if close
+                let distToPlayer = Math.hypot((player.x - en.x), (player.y - en.y));
+                if (canSeePlayer && distToPlayer < 350) {
+                    en.shootTimer++;
+                    if (en.shootTimer >= 90) {
+                        en.shootTimer = 0;
+                        let angle = Math.atan2((player.y + player.h/2) - (en.y + en.h/2), (player.x + player.w/2) - (en.x + en.w/2));
+                        bullets.push({
+                            x: en.x + en.w/2, y: en.y + en.h/2,
+                            vx: Math.cos(angle) * 8,
+                            vy: Math.sin(angle) * 8,
+                            damage: 15,
+                            radius: 4,
+                            color: '#ef4444',
+                            type: 'bullet',
+                            owner: en
+                        });
+                    }
+                }
+
+                // Check collision with player
+                if (canSeePlayer && player.x + player.w > en.x && player.x < en.x + en.w &&
+                    player.y + player.h > en.y && player.y < en.y + en.h) {
+                    if (player.uberTimer <= 0) {
+                        activeClass.hp -= 0.5;
+                        updateHUD();
+                        if (activeClass.hp <= 0) respawnPlayer();
+                    }
+                }
+            }
+
+            updatePayload();
+
+            function getSentryMuzzle(sentry, angle) {
+                let muzzleDistance = 23 + sentry.level * 3;
+                let pivotY = sentry.y - (14 + sentry.level * 2);
+                return {
+                    x: sentry.x + Math.cos(angle) * muzzleDistance,
+                    y: pivotY + Math.sin(angle) * muzzleDistance
+                };
+            }
+
+            // Update Sentry AI (Engineer building) with smooth barrel rotation and level upgrades
+            if (buildings.sentry) {
+                buildings.sentry.fireTimer++;
+                if (buildings.sentry.level === 3) {
+                    if (buildings.sentry.rocketCooldown === undefined) {
+                        buildings.sentry.rocketCooldown = 600; // 10 giây (600 khung hình ở 60fps)
+                    } else if (buildings.sentry.rocketCooldown > 0) {
+                        buildings.sentry.rocketCooldown--;
+                    }
+                }
+                
+                // Tìm kẻ địch gần nhất trong bán kính tầm bắn (tăng theo cấp độ Sentry)
+                let range = 350 + buildings.sentry.level * 75;
+                let target = null;
+                let minDist = range;
+                enemies.forEach(en => {
+                    if (!en.hasExitedEnemySpawnRoom) return;
+                    let d = Math.hypot(en.x - buildings.sentry.x, en.y - buildings.sentry.y);
+                    if (d < minDist) {
+                        minDist = d;
+                        target = en;
+                    }
+                });
+
+                if (target) {
+                    let sentryPivotY = buildings.sentry.y - (14 + buildings.sentry.level * 2);
+                    let targetAngle = Math.atan2((target.y + target.h/2) - sentryPivotY, (target.x + target.w/2) - buildings.sentry.x);
+                    
+                    let angleDiff = targetAngle - buildings.sentry.angle;
+                    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                    
+                    buildings.sentry.angle += angleDiff * 0.15;
+
+                    let fireRateLimit = Math.max(6, 16 - buildings.sentry.level * 3);
+                    let sentryTargetInsideSpawn = isInsideSpawnRoom(target.x + target.w / 2, target.y + target.h / 2);
+                    let sentryCanShootTarget = buildings.sentry.spawnRoomSide !== 'inside' || sentryTargetInsideSpawn;
+                    if (Math.abs(angleDiff) < 0.6 && sentryCanShootTarget) {
+                        // Level 3 bắn 4 rocket khi hết cooldown 10 giây
+                        if (buildings.sentry.level === 3 && buildings.sentry.rocketCooldown <= 0) {
+                            buildings.sentry.rocketCooldown = 600; // Reset cooldown 10 giây
+                            for (let rIndex = 0; rIndex < 4; rIndex++) {
+                                setTimeout(() => {
+                                    if (!buildings.sentry) return;
+                                    let rocketAngle = buildings.sentry.angle;
+                                    let muzzle = getSentryMuzzle(buildings.sentry, rocketAngle);
+                                    playSound('shoot_pistol');
+                                    let rocket = {
+                                        x: muzzle.x,
+                                        y: muzzle.y,
+                                        spawnRoomSide: buildings.sentry.spawnRoomSide,
+                                        vx: Math.cos(rocketAngle) * 14,
+                                        vy: Math.sin(rocketAngle) * 14,
+                                        angle: rocketAngle,
+                                        damage: 50,
+                                        w: 18, h: 8,
+                                        color: '#3b82f6',
+                                        type: 'rocket',
+                                        explosionRadius: 70,
+                                        selfDamage: 0,
+                                        knockback: 10
+                                    };
+                                    if (applyRandomCrit(rocket)) {
+                                        spawnSparks(muzzle.x, muzzle.y, '#fde047', 10);
+                                        addFloatingText(muzzle.x, muzzle.y - 16, 'CRIT! x3', '#fde047');
+                                    } else {
+                                        spawnSparks(muzzle.x, muzzle.y, '#facc15', 7);
+                                    }
+                                    bullets.push(rocket);
+                                }, rIndex * 250); // Bắn liên tiếp 4 rocket cách nhau 0.25 giây
+                            }
+                        }
+
+                        // Sentry vẫn bắn đạn bình thường song song với việc bắn rocket
+                        if (buildings.sentry.fireTimer >= fireRateLimit) {
+                            buildings.sentry.fireTimer = 0;
+                            let bulletAngle = buildings.sentry.angle;
+                            let muzzle = getSentryMuzzle(buildings.sentry, bulletAngle);
+                            playSound('shoot_pistol');
+                            let sentryBullet = {
+                                x: muzzle.x,
+                                y: muzzle.y,
+                                spawnRoomSide: buildings.sentry.spawnRoomSide,
+                                vx: Math.cos(bulletAngle) * 18,
+                                vy: Math.sin(bulletAngle) * 18,
+                                damage: 12 + buildings.sentry.level * 4,
+                                radius: 3,
+                                color: '#eab308',
+                                type: 'bullet'
+                            };
+                            if (applyRandomCrit(sentryBullet)) {
+                                spawnSparks(muzzle.x, muzzle.y, '#fde047', 8);
+                                addFloatingText(muzzle.x, muzzle.y - 16, 'CRIT! x3', '#fde047');
+                            } else {
+                                spawnSparks(muzzle.x, muzzle.y, '#fde047', 4);
+                            }
+                            bullets.push(sentryBullet);
+                        }
+                    }
+                } else {
+                    buildings.sentry.angle *= 0.95;
+                }
+            }
+
+            // Update Dispenser (Engineer building healing & ammo supply, increased effectiveness by level)
+            if (buildings.dispenser) {
+                let dist = Math.hypot((player.x + player.w/2) - buildings.dispenser.x, (player.y + player.h/2) - buildings.dispenser.y);
+                let healRate = 0.5 * buildings.dispenser.level;
+                if (dist < 60 + buildings.dispenser.level * 10) {
+                    if (activeClass.hp < activeClass.maxHp) {
+                        activeClass.hp = Math.min(activeClass.maxHp, activeClass.hp + healRate);
+                        updateHUD();
+                    }
+                    // Dispenser cũng hồi dần đạn cho người chơi ở cấp độ 2 và 3
+                    if (buildings.dispenser.level >= 2 && Math.random() < 0.05 && activeClass.ammo < activeClass.maxAmmo) {
+                        activeClass.ammo = Math.min(activeClass.maxAmmo, activeClass.ammo + 1);
+                        updateHUD();
+                    }
+                }
+            }
+
+            // Dynamic Enemy Spawner
+            spawnTimer++;
+            if (spawnTimer >= spawnInterval) {
+                spawnTimer = 0;
+                // Limit maximum active enemies to prevent performance drop
+                if (enemies.length < 25) {
+                    let enemyTypes = ['soldier', 'pyro'];
+                    let spawnX = ENEMY_SPAWN_ROOM.left + 28 + Math.random() * (ENEMY_SPAWN_ROOM.right - ENEMY_SPAWN_ROOM.left - 60);
+                    enemies.push({
+                        x: spawnX,
+                        y: ENEMY_SPAWN_ROOM.floorY - 56,
+                        w: 32,
+                        h: 56,
+                        vx: -2,
+                        vy: 0,
+                        hp: 120,
+                        maxHp: 120,
+                        type: enemyTypes[Math.floor(Math.random() * enemyTypes.length)],
+                        shootTimer: 0,
+                        hasExitedEnemySpawnRoom: false
+                    });
+                }
+            }
+
+            // Camera follow player smoothly with Shake offset
+            let mapLeft = platforms.reduce((left, platform) => Math.min(left, platform.x), 0);
+            let mapRight = platforms.reduce((right, platform) => Math.max(right, platform.x + platform.w), 0);
+            let mapBottom = platforms.reduce((bottom, platform) => Math.max(bottom, platform.y + platform.h), 0);
+            let minCamX = mapLeft;
+            let maxCamX = Math.max(minCamX, mapRight - canvas.width);
+            let cameraFocusY = canvas.height * 0.62;
+            let maxCamY = Math.max(0, mapBottom - cameraFocusY);
+            let playerCenterX = player.x + player.w / 2;
+            let playerCenterY = player.y + player.h / 2;
+            let targetCamX = playerCenterX - canvas.width / 2;
+            let targetCamY = playerCenterY - cameraFocusY;
+            if (shakeDuration > 0) {
+                targetCamX += (Math.random() - 0.5) * shakeIntensity * 2;
+                targetCamY += (Math.random() - 0.5) * shakeIntensity * 2;
+            }
+            targetCamX = Math.max(minCamX, Math.min(maxCamX, targetCamX));
+            targetCamY = Math.max(0, Math.min(maxCamY, targetCamY));
+            camera.x += (targetCamX - camera.x) * 0.1;
+            camera.y += (targetCamY - camera.y) * 0.1;
+            camera.x = Math.max(minCamX, Math.min(maxCamX, camera.x));
+            camera.y = Math.max(0, Math.min(maxCamY, camera.y));
+        }
+
+        // --- Render Graphics ---
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            ctx.translate(-camera.x, -camera.y);
+            let playerTeamSkin = TEAM_SKINS[currentTeam];
+            let enemyTeam = currentTeam === 'RED' ? 'BLU' : 'RED';
+            let enemyTeamSkin = TEAM_SKINS[enemyTeam];
+
+            // Draw Background Grid / Theme Elements
+            ctx.fillStyle = '#334155';
+            platforms.forEach(p => {
+                ctx.fillRect(p.x, p.y, p.w, p.h);
+                ctx.fillStyle = '#1e293b';
+                ctx.fillRect(p.x, p.y + p.h - 6, p.w, 6);
+                ctx.fillStyle = '#334155';
+            });
+
+            ctx.fillStyle = '#111827';
+            ctx.fillRect(SPAWN_ROOM.left, SPAWN_ROOM.top, SPAWN_ROOM.right - SPAWN_ROOM.left, SPAWN_ROOM.floorY - SPAWN_ROOM.top);
+            ctx.fillStyle = playerTeamSkin.dark;
+            ctx.fillRect(SPAWN_ROOM.left, SPAWN_ROOM.top, SPAWN_ROOM.right, 10);
+            ctx.fillRect(SPAWN_ROOM.left, SPAWN_ROOM.top, 10, SPAWN_ROOM.floorY - SPAWN_ROOM.top);
+            ctx.fillRect(SPAWN_ROOM.left, SPAWN_ROOM.floorY - 8, SPAWN_ROOM.right, 8);
+            ctx.fillRect(SPAWN_ROOM.right - 8, SPAWN_ROOM.top, 8, 64);
+            ctx.fillRect(SPAWN_ROOM.right - 8, SPAWN_ROOM.floorY - 8, 8, 8);
+            ctx.fillStyle = playerTeamSkin.primary;
+            ctx.fillRect(24, SPAWN_ROOM.top + 20, 6, 20);
+            ctx.fillRect(30, SPAWN_ROOM.top + 20, 42, 4);
+            ctx.fillRect(30, SPAWN_ROOM.top + 36, 32, 4);
+            ctx.fillStyle = '#cbd5e1';
+            ctx.font = 'bold 12px Inter';
+            ctx.fillText('SPAWN ROOM', 82, SPAWN_ROOM.top + 34);
+            ctx.fillStyle = playerTeamSkin.primary;
+            ctx.fillRect(SPAWN_ROOM.right - 6, SPAWN_ROOM.top + 68, 4, SPAWN_ROOM.floorY - SPAWN_ROOM.top - 84);
+            ctx.fillStyle = playerTeamSkin.light;
+            ctx.font = 'bold 10px Inter';
+            ctx.fillText(player.hasExitedSpawnRoom ? 'LOCKED' : 'EXIT >', SPAWN_ROOM.right - 72, SPAWN_ROOM.top + 60);
+
+            ctx.fillStyle = enemyTeamSkin.dark;
+            ctx.fillRect(ENEMY_SPAWN_ROOM.left, ENEMY_SPAWN_ROOM.top, ENEMY_SPAWN_ROOM.right - ENEMY_SPAWN_ROOM.left, ENEMY_SPAWN_ROOM.floorY - ENEMY_SPAWN_ROOM.top);
+            ctx.fillStyle = enemyTeamSkin.primary;
+            ctx.fillRect(ENEMY_SPAWN_ROOM.left, ENEMY_SPAWN_ROOM.top, ENEMY_SPAWN_ROOM.right - ENEMY_SPAWN_ROOM.left, 10);
+            ctx.fillRect(ENEMY_SPAWN_ROOM.right - 10, ENEMY_SPAWN_ROOM.top, 10, ENEMY_SPAWN_ROOM.floorY - ENEMY_SPAWN_ROOM.top);
+            ctx.fillRect(ENEMY_SPAWN_ROOM.left, ENEMY_SPAWN_ROOM.floorY - 8, ENEMY_SPAWN_ROOM.right - ENEMY_SPAWN_ROOM.left, 8);
+            ctx.fillRect(ENEMY_SPAWN_ROOM.left, ENEMY_SPAWN_ROOM.top, 8, 64);
+            ctx.fillRect(ENEMY_SPAWN_ROOM.left, ENEMY_SPAWN_ROOM.floorY - 8, 8, 8);
+            ctx.fillStyle = enemyTeamSkin.primary;
+            ctx.fillRect(ENEMY_SPAWN_ROOM.left + 26, ENEMY_SPAWN_ROOM.top + 20, 6, 20);
+            ctx.fillRect(ENEMY_SPAWN_ROOM.left + 32, ENEMY_SPAWN_ROOM.top + 20, 42, 4);
+            ctx.fillRect(ENEMY_SPAWN_ROOM.left + 32, ENEMY_SPAWN_ROOM.top + 36, 32, 4);
+            ctx.fillStyle = enemyTeamSkin.light;
+            ctx.font = 'bold 12px Inter';
+            ctx.fillText(`${enemyTeam} SPAWN`, ENEMY_SPAWN_ROOM.left + 84, ENEMY_SPAWN_ROOM.top + 34);
+            ctx.fillStyle = enemyTeamSkin.primary;
+            ctx.fillRect(ENEMY_SPAWN_ROOM.left + 4, ENEMY_SPAWN_ROOM.top + 68, 4, ENEMY_SPAWN_ROOM.floorY - ENEMY_SPAWN_ROOM.top - 84);
+            ctx.fillStyle = enemyTeamSkin.light;
+            ctx.font = 'bold 10px Inter';
+            ctx.fillText(`${enemyTeam} ONLY`, ENEMY_SPAWN_ROOM.left + 14, ENEMY_SPAWN_ROOM.top + 60);
+            ctx.fillStyle = enemyTeamSkin.dark;
+            ctx.fillRect(ENEMY_SPAWN_ROOM.left, ENEMY_SPAWN_ROOM.top + 64, 8, ENEMY_SPAWN_ROOM.floorY - ENEMY_SPAWN_ROOM.top - 72);
+            ctx.fillStyle = enemyTeamSkin.light;
+            for (let gateY = ENEMY_SPAWN_ROOM.top + 68; gateY < ENEMY_SPAWN_ROOM.floorY - 12; gateY += 16) {
+                ctx.fillRect(ENEMY_SPAWN_ROOM.left + 2, gateY, 4, 8);
+            }
+
+            if (currentGameMode === 'Payload' && payloadCart) {
+                ctx.save();
+                ctx.translate(payloadCart.x, payloadCart.y);
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(-36, -28, 72, 18);
+                ctx.fillRect(-28, -10, 56, 4);
+                ctx.fillStyle = '#475569';
+                ctx.fillRect(-30, -24, 60, 10);
+                ctx.fillStyle = TEAM_SKINS[currentTeam].primary;
+                ctx.fillRect(-26, -22, 52, 4);
+                ctx.fillStyle = '#a16207';
+                ctx.fillRect(-18, -40, 36, 12);
+                ctx.fillStyle = '#eab308';
+                ctx.fillRect(-12, -38, 24, 3);
+                ctx.fillStyle = '#1e293b';
+                ctx.beginPath();
+                ctx.arc(-23, -8, 8, 0, Math.PI * 2);
+                ctx.arc(23, -8, 8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#94a3b8';
+                ctx.beginPath();
+                ctx.arc(-23, -8, 3, 0, Math.PI * 2);
+                ctx.arc(23, -8, 3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#f8fafc';
+                ctx.font = 'bold 9px Inter';
+                ctx.fillText('PAYLOAD', -21, -46);
+                ctx.restore();
+            }
+
+            // Draw Sentry & Dispenser with Detailed Models (Cấp độ càng cao hiển thị càng hoành tráng)
+            if (buildings.sentry) {
+                let sentryBodyColor = buildings.sentry.level === 3 ? '#2563eb' : (buildings.sentry.level === 2 ? '#059669' : '#64748b');
+                let sentryBodyTop = buildings.sentry.y - (18 + buildings.sentry.level * 4);
+                let sentryBodyHeight = 12 + buildings.sentry.level * 4;
+
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(buildings.sentry.x - 19, buildings.sentry.y - 8, 38, 8);
+                ctx.fillStyle = '#475569';
+                ctx.fillRect(buildings.sentry.x - (12 + buildings.sentry.level * 3), buildings.sentry.y - 11, 24 + buildings.sentry.level * 6, 5);
+                ctx.fillStyle = '#1e293b';
+                ctx.fillRect(buildings.sentry.x - 13, sentryBodyTop, 26, sentryBodyHeight);
+                ctx.fillStyle = sentryBodyColor;
+                ctx.fillRect(buildings.sentry.x - 10, sentryBodyTop + 3, 20, sentryBodyHeight - 6);
+                ctx.fillStyle = '#cbd5e1';
+                ctx.fillRect(buildings.sentry.x - 8, sentryBodyTop + 4, 3, sentryBodyHeight - 9);
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(buildings.sentry.x + 5, sentryBodyTop + 5, 4, 5);
+                ctx.fillStyle = '#f97316';
+                ctx.fillRect(buildings.sentry.x + 6, sentryBodyTop + 6, 2, 2);
+                ctx.fillStyle = '#eab308';
+                ctx.fillRect(buildings.sentry.x - 4, sentryBodyTop + sentryBodyHeight - 5, 8, 2);
+                
+                // Hiển thị nhãn Level Sentry
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 9px Inter';
+                ctx.fillText(`Lv.${buildings.sentry.level}`, buildings.sentry.x - 10, buildings.sentry.y - (22 + buildings.sentry.level * 4));
+
+                ctx.save();
+                ctx.translate(buildings.sentry.x, buildings.sentry.y - (14 + buildings.sentry.level * 2));
+                ctx.rotate(buildings.sentry.angle);
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(-5, -7, 13, 14);
+                ctx.fillStyle = '#94a3b8';
+                ctx.fillRect(1, -6, 17 + buildings.sentry.level * 4, 12);
+                ctx.fillStyle = '#334155';
+                ctx.fillRect(4, -4, 14 + buildings.sentry.level * 4, 8);
+                ctx.fillStyle = '#cbd5e1';
+                ctx.fillRect(15, -5, 8 + buildings.sentry.level * 3, 3);
+                ctx.fillRect(15, 2, 8 + buildings.sentry.level * 3, 3);
+                ctx.fillStyle = '#eab308';
+                ctx.fillRect(19 + buildings.sentry.level * 3, -6, 4, 12);
+                ctx.restore();
+            }
+
+            if (buildings.dispenser) {
+                let dispenserColor = buildings.dispenser.level === 3 ? '#1e3a8a' : (buildings.dispenser.level === 2 ? '#065f46' : '#047857');
+                let dispenserWidth = 32 + buildings.dispenser.level * 8;
+                let dispenserHeight = 30 + buildings.dispenser.level * 8;
+                let dispenserLeft = buildings.dispenser.x - dispenserWidth / 2;
+                let dispenserTop = buildings.dispenser.y - dispenserHeight;
+
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(dispenserLeft - 3, dispenserTop - 2, dispenserWidth + 6, dispenserHeight + 3);
+                ctx.fillStyle = dispenserColor;
+                ctx.fillRect(dispenserLeft, dispenserTop, dispenserWidth, dispenserHeight);
+                ctx.fillStyle = '#94a3b8';
+                ctx.fillRect(dispenserLeft + 3, dispenserTop + 4, 4, dispenserHeight - 8);
+                ctx.fillStyle = '#334155';
+                ctx.fillRect(dispenserLeft + 9, dispenserTop + 7, dispenserWidth - 18, 12);
+                ctx.fillStyle = '#a7f3d0';
+                ctx.fillRect(dispenserLeft + 12, dispenserTop + 10, dispenserWidth - 24, 3);
+                ctx.fillStyle = '#1e293b';
+                for (let vent = 0; vent < 3; vent++) {
+                    ctx.fillRect(dispenserLeft + 9, dispenserTop + 23 + vent * 4, dispenserWidth - 18, 2);
+                }
+                ctx.fillStyle = '#cbd5e1';
+                ctx.fillRect(dispenserLeft + 4, dispenserTop + dispenserHeight - 5, dispenserWidth - 8, 3);
+                
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 9px Inter';
+                ctx.fillText(`Lv.${buildings.dispenser.level}`, buildings.dispenser.x - 12, dispenserTop - 4);
+
+                ctx.fillStyle = '#10b981';
+                ctx.fillRect(buildings.dispenser.x - 4, buildings.dispenser.y - 20, 8, 16);
+                ctx.fillRect(buildings.dispenser.x - 8, buildings.dispenser.y - 16, 16, 8);
+            }
+
+            if (stickyBomb) {
+                ctx.fillStyle = stickyBomb.isCrit ? '#fde047' : '#7e22ce';
+                ctx.beginPath();
+                ctx.arc(stickyBomb.x, stickyBomb.y, stickyBomb.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#1e293b';
+                ctx.fillRect(stickyBomb.x - 4, stickyBomb.y - 2, 8, 4);
+                ctx.fillStyle = '#e9d5ff';
+                ctx.fillRect(stickyBomb.x - 2, stickyBomb.y - 1, 4, 2);
+                if (stickyBomb.stuck) {
+                    ctx.strokeStyle = '#e9d5ff';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(stickyBomb.x, stickyBomb.y, stickyBomb.radius + 4, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            }
+
+            items.forEach(medkit => {
+                let medkitY = medkit.y + Math.sin(medkit.bob) * 3;
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(medkit.x - 12, medkitY - 2, 24, 22);
+                ctx.fillStyle = '#f8fafc';
+                ctx.fillRect(medkit.x - 10, medkitY, 20, 18);
+                ctx.fillStyle = '#dc2626';
+                ctx.fillRect(medkit.x - 3, medkitY + 3, 6, 12);
+                ctx.fillRect(medkit.x - 6, medkitY + 6, 12, 6);
+                ctx.fillStyle = '#fecaca';
+                ctx.fillRect(medkit.x - 1, medkitY + 4, 2, 10);
+                ctx.fillRect(medkit.x - 5, medkitY + 8, 10, 2);
+            });
+
+            // Draw Player
+            ctx.save();
+            if (player.isCloaked) ctx.globalAlpha = 0.14;
+            ctx.translate(player.x + player.w / 2, player.y);
+            ctx.scale(player.facing, 1);
+
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(-12, 19, 24, 26);
+            ctx.fillRect(-10, 42, 8, 11);
+            ctx.fillRect(2, 42, 8, 11);
+            ctx.fillRect(-12, 52, 11, 4);
+            ctx.fillRect(1, 52, 12, 4);
+            ctx.fillStyle = '#334155';
+            ctx.fillRect(-9, 44, 6, 6);
+            ctx.fillRect(3, 44, 6, 6);
+
+            ctx.fillStyle = TEAM_SKINS[currentTeam].primary;
+            ctx.fillRect(-11, 20, 22, 23);
+            ctx.fillRect(-14, 22, 5, 12);
+            ctx.fillRect(9, 22, 5, 10);
+            ctx.fillStyle = TEAM_SKINS[currentTeam].light;
+            ctx.fillRect(-6, 25, 4, 8);
+            ctx.fillStyle = 'rgba(255,255,255,0.22)';
+            ctx.fillRect(-8, 22, 3, 15);
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(-11, 39, 22, 4);
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fillRect(-2, 39, 4, 4);
+
+            ctx.fillStyle = '#e7b994';
+            ctx.fillRect(-7, 6, 14, 14);
+            ctx.fillRect(-9, 10, 2, 5);
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(3, 11, 3, 3);
+            ctx.fillRect(-6, 5, 12, 3);
+
+            switch (currentClassKey) {
+                case 'Scout':
+                    ctx.fillStyle = '#991b1b';
+                    ctx.fillRect(-9, 3, 16, 5);
+                    ctx.fillRect(3, 6, 8, 2);
+                    ctx.fillStyle = '#f8fafc';
+                    ctx.fillRect(-3, 4, 5, 3);
+                    ctx.fillRect(-8, 24, 16, 3);
+                    ctx.fillStyle = '#7f1d1d';
+                    ctx.fillRect(-14, 29, 4, 5);
+                    break;
+                case 'Pyro':
+                    ctx.fillStyle = '#475569';
+                    ctx.fillRect(-16, 22, 5, 17);
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.fillRect(-16, 25, 5, 3);
+                    ctx.fillRect(-16, 34, 5, 3);
+                    ctx.fillStyle = '#7c2d12';
+                    ctx.fillRect(-9, 3, 18, 5);
+                    ctx.fillStyle = '#1e293b';
+                    ctx.fillRect(-8, 8, 16, 11);
+                    ctx.fillStyle = '#f97316';
+                    ctx.fillRect(-6, 10, 4, 4);
+                    ctx.fillRect(2, 10, 4, 4);
+                    ctx.fillStyle = '#cbd5e1';
+                    ctx.fillRect(-3, 15, 6, 3);
+                    break;
+                case 'Soldier':
+                    ctx.fillStyle = '#47502b';
+                    ctx.fillRect(-9, 3, 18, 6);
+                    ctx.fillRect(-7, 1, 14, 3);
+                    ctx.fillStyle = '#cbd5e1';
+                    ctx.fillRect(-4, 5, 8, 2);
+                    ctx.strokeStyle = '#78350f';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(-8, 22);
+                    ctx.lineTo(8, 39);
+                    ctx.stroke();
+                    ctx.fillStyle = '#eab308';
+                    ctx.fillRect(4, 27, 3, 3);
+                    ctx.fillRect(0, 32, 3, 3);
+                    break;
+                case 'Demoman':
+                    ctx.fillStyle = '#3f2a4d';
+                    ctx.fillRect(-9, 3, 18, 5);
+                    ctx.fillRect(-9, 2, 8, 3);
+                    ctx.fillStyle = '#111827';
+                    ctx.fillRect(-7, 10, 7, 5);
+                    ctx.fillStyle = '#facc15';
+                    ctx.fillRect(-6, 11, 5, 2);
+                    ctx.strokeStyle = '#eab308';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(-8, 23);
+                    ctx.lineTo(8, 38);
+                    ctx.stroke();
+                    ctx.fillStyle = '#fbbf24';
+                    ctx.fillRect(-5, 25, 3, 3);
+                    ctx.fillRect(0, 30, 3, 3);
+                    ctx.fillRect(5, 35, 3, 3);
+                    break;
+                case 'Heavy':
+                    ctx.fillStyle = '#7f1d1d';
+                    ctx.fillRect(-15, 20, 30, 24);
+                    ctx.fillStyle = '#ef4444';
+                    ctx.fillRect(-12, 23, 24, 17);
+                    ctx.fillStyle = '#334155';
+                    ctx.fillRect(-5, 23, 10, 14);
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.fillRect(-3, 26, 6, 2);
+                    ctx.fillRect(-3, 31, 6, 2);
+                    ctx.fillStyle = '#78350f';
+                    ctx.fillRect(-8, 3, 16, 5);
+                    ctx.fillRect(-8, 6, 16, 9);
+                    ctx.fillStyle = '#1e293b';
+                    ctx.fillRect(-8, 13, 16, 5);
+                    break;
+                case 'Sniper':
+                    ctx.fillStyle = '#365347';
+                    ctx.fillRect(-10, 4, 20, 4);
+                    ctx.fillRect(-7, 1, 14, 4);
+                    ctx.fillStyle = '#0f172a';
+                    ctx.fillRect(1, 10, 8, 4);
+                    ctx.fillStyle = '#34d399';
+                    ctx.fillRect(3, 11, 4, 2);
+                    ctx.fillStyle = '#78350f';
+                    ctx.fillRect(-8, 18, 16, 4);
+                    ctx.fillStyle = '#d6d3d1';
+                    ctx.fillRect(-5, 19, 4, 2);
+                    ctx.strokeStyle = '#78350f';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(-8, 24);
+                    ctx.lineTo(7, 39);
+                    ctx.stroke();
+                    break;
+                case 'Engineer':
+                    ctx.fillStyle = '#92400e';
+                    ctx.fillRect(-10, 4, 20, 4);
+                    ctx.fillStyle = '#f59e0b';
+                    ctx.fillRect(-8, 1, 16, 5);
+                    ctx.fillRect(-3, -1, 6, 3);
+                    ctx.fillStyle = '#1e293b';
+                    ctx.fillRect(-7, 10, 14, 5);
+                    ctx.fillStyle = '#fbbf24';
+                    ctx.fillRect(-5, 11, 4, 3);
+                    ctx.fillRect(2, 11, 4, 3);
+                    ctx.fillStyle = '#78350f';
+                    ctx.fillRect(-10, 36, 20, 4);
+                    ctx.fillStyle = '#cbd5e1';
+                    ctx.fillRect(5, 37, 3, 2);
+                    break;
+                case 'Medic':
+                    ctx.fillStyle = '#991b1b';
+                    ctx.fillRect(-12, 21, 24, 21);
+                    ctx.fillStyle = '#f8fafc';
+                    ctx.fillRect(-10, 22, 20, 19);
+                    ctx.fillRect(-14, 23, 5, 11);
+                    ctx.fillRect(9, 23, 5, 10);
+                    ctx.fillStyle = '#dc2626';
+                    ctx.fillRect(3, 28, 8, 3);
+                    ctx.fillRect(5, 26, 4, 7);
+                    ctx.fillStyle = '#e2e8f0';
+                    ctx.fillRect(-8, 3, 16, 5);
+                    ctx.fillStyle = '#0f172a';
+                    ctx.fillRect(-7, 10, 14, 5);
+                    ctx.fillStyle = '#38bdf8';
+                    ctx.fillRect(-5, 11, 4, 2);
+                    ctx.fillRect(2, 11, 4, 2);
+                    ctx.fillStyle = '#991b1b';
+                    ctx.fillRect(-10, 38, 20, 4);
+                    break;
+                    case 'Spy':
+                        ctx.fillStyle = '#334155';
+                        ctx.fillRect(-9, 3, 18, 5);
+                        ctx.fillRect(-6, 1, 13, 3);
+                        ctx.fillStyle = '#cbd5e1';
+                        ctx.fillRect(-7, 9, 14, 8);
+                        ctx.fillStyle = '#0f172a';
+                        ctx.fillRect(-8, 8, 16, 5);
+                        ctx.fillRect(-6, 13, 12, 3);
+                        ctx.fillStyle = '#e2e8f0';
+                        ctx.fillRect(-5, 10, 4, 2);
+                        ctx.fillRect(2, 10, 4, 2);
+                        ctx.fillStyle = '#7f1d1d';
+                        ctx.fillRect(-2, 17, 4, 8);
+                        ctx.fillRect(-5, 23, 10, 3);
+                        ctx.fillStyle = '#334155';
+                        ctx.fillRect(-10, 27, 20, 4);
+                        ctx.fillStyle = '#94a3b8';
+                        ctx.fillRect(-3, 28, 6, 2);
+                        break;
+            }
+            ctx.restore();
+
+            if (player.uberTimer > 0) {
+                ctx.strokeStyle = '#facc15';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(player.x - 4, player.y - 4, player.w + 8, player.h + 8);
+                ctx.fillStyle = '#facc15';
+                ctx.fillRect(player.x + player.w / 2 - 3, player.y - 9, 6, 3);
+            }
+
+            // Draw Unique Weapon Models for Each Class with Mouse Rotation
+            ctx.save();
+            if (player.isCloaked) ctx.globalAlpha = 0.14;
+            let gunX = player.x + player.w / 2;
+            let gunY = player.y + 24;
+            
+            // Calculate angle towards mouse in world coordinates
+            let aimAngle = Math.atan2(mouse.worldY - gunY, mouse.worldX - gunX);
+            
+            // Determine player facing based on mouse X relative to gun
+            if (mouse.worldX < gunX) {
+                player.facing = -1;
+            } else {
+                player.facing = 1;
+            }
+
+            ctx.translate(gunX, gunY);
+            ctx.rotate(aimAngle);
+            
+            // If aiming to the left, flip vertically so gun text/details stay upright
+            if (Math.abs(aimAngle) > Math.PI / 2) {
+                ctx.scale(1, -1);
+            }
+
+            switch(activeClass.weapon) {
+                case 'scattergun': // Scout Scattergun
+                    ctx.fillStyle = '#292524';
+                    ctx.fillRect(-10, -5, 15, 10);
+                    ctx.fillStyle = '#7c2d12';
+                    ctx.fillRect(-9, -4, 12, 8);
+                    ctx.fillRect(3, 4, 7, 10);
+                    ctx.fillStyle = '#b45309';
+                    ctx.fillRect(-7, -3, 8, 2);
+                    ctx.fillRect(4, 5, 2, 6);
+                    ctx.fillStyle = '#334155';
+                    ctx.fillRect(2, -6, 18, 12);
+                    ctx.fillStyle = '#64748b';
+                    ctx.fillRect(4, -5, 13, 2);
+                    ctx.fillRect(8, 5, 7, 2);
+                    ctx.fillStyle = '#1e293b';
+                    ctx.fillRect(18, -5, 13, 4);
+                    ctx.fillRect(18, 1, 13, 4);
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.fillRect(19, -4, 10, 2);
+                    ctx.fillRect(19, 2, 10, 2);
+                    ctx.fillStyle = '#0f172a';
+                    ctx.fillRect(28, -5, 3, 4);
+                    ctx.fillRect(28, 1, 3, 4);
+                    ctx.fillStyle = '#eab308';
+                    ctx.fillRect(15, -6, 2, 12);
+                    ctx.fillRect(7, -1, 3, 2);
+                    break;
+                case 'flamethrower': // Pyro Flame Tank & Barrel
+                    ctx.fillStyle = '#292524';
+                    ctx.fillRect(-17, -9, 13, 18);
+                    ctx.fillStyle = '#c2410c';
+                    ctx.fillRect(-16, -8, 11, 16);
+                    ctx.fillStyle = '#fb923c';
+                    ctx.fillRect(-14, -6, 7, 3);
+                    ctx.fillStyle = '#64748b';
+                    ctx.fillRect(-5, -8, 6, 16);
+                    ctx.fillRect(-4, -10, 3, 20);
+                    ctx.fillStyle = '#7c2d12';
+                    ctx.fillRect(0, -7, 19, 14);
+                    ctx.fillStyle = '#f97316';
+                    ctx.fillRect(2, -5, 14, 4);
+                    ctx.fillStyle = '#334155';
+                    ctx.fillRect(16, -4, 12, 8);
+                    ctx.fillStyle = '#cbd5e1';
+                    ctx.fillRect(25, -5, 4, 10);
+                    ctx.fillStyle = '#eab308';
+                    ctx.fillRect(27, -3, 4, 6);
+                    ctx.fillStyle = '#292524';
+                    ctx.fillRect(3, 6, 6, 9);
+                    ctx.fillRect(8, -11, 5, 4);
+                    break;
+                case 'rocket': // Rocket Launcher
+                    ctx.fillStyle = '#292524';
+                    ctx.fillRect(-13, -5, 12, 10);
+                    ctx.fillStyle = '#78350f';
+                    ctx.fillRect(-12, -4, 10, 8);
+                    ctx.fillStyle = '#1e3a8a';
+                    ctx.fillRect(-3, -9, 25, 18);
+                    ctx.fillStyle = '#3b82f6';
+                    ctx.fillRect(0, -7, 17, 5);
+                    ctx.fillStyle = '#334155';
+                    ctx.fillRect(19, -7, 10, 14);
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.fillRect(22, -9, 4, 18);
+                    ctx.fillStyle = '#0f172a';
+                    ctx.fillRect(27, -5, 3, 10);
+                    ctx.fillStyle = '#475569';
+                    ctx.fillRect(4, -13, 10, 4);
+                    ctx.fillRect(5, 8, 7, 10);
+                    ctx.fillStyle = '#eab308';
+                    ctx.fillRect(6, -6, 2, 2);
+                    break;
+                case 'grenade': // Grenade Launcher
+                    ctx.fillStyle = '#292524';
+                    ctx.fillRect(-10, -5, 11, 10);
+                    ctx.fillStyle = '#7c2d12';
+                    ctx.fillRect(-9, -4, 9, 8);
+                    ctx.fillStyle = '#334155';
+                    ctx.fillRect(0, -8, 22, 16);
+                    ctx.fillStyle = '#7e22ce';
+                    ctx.fillRect(2, -6, 15, 12);
+                    ctx.fillStyle = '#cbd5e1';
+                    ctx.fillRect(18, -6, 8, 12);
+                    ctx.fillStyle = '#1e293b';
+                    ctx.fillRect(24, -7, 4, 14);
+                    ctx.fillStyle = '#581c87';
+                    ctx.beginPath();
+                    ctx.arc(10, 0, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#e9d5ff';
+                    ctx.fillRect(8, -2, 4, 2);
+                    ctx.fillStyle = '#292524';
+                    ctx.fillRect(4, 7, 7, 10);
+                    ctx.fillStyle = '#eab308';
+                    ctx.fillRect(3, -9, 3, 2);
+                    break;
+                case 'minigun': // Heavy Minigun barrels
+                    ctx.fillStyle = '#292524';
+                    ctx.fillRect(-10, -10, 13, 20);
+                    ctx.fillStyle = '#7f1d1d';
+                    ctx.fillRect(-8, -8, 10, 16);
+                    ctx.fillStyle = '#334155';
+                    ctx.fillRect(0, -12, 22, 24);
+                    ctx.fillStyle = '#ef4444';
+                    ctx.fillRect(3, -9, 14, 18);
+                    ctx.fillStyle = '#1e293b';
+                    ctx.fillRect(18, -10, 14, 20);
+                    ctx.fillStyle = '#64748b';
+                    ctx.fillRect(20, -8, 13, 3);
+                    ctx.fillRect(20, -2, 13, 3);
+                    ctx.fillRect(20, 4, 13, 3);
+                    ctx.fillStyle = '#cbd5e1';
+                    ctx.fillRect(29, -9, 4, 4);
+                    ctx.fillRect(29, -2, 4, 4);
+                    ctx.fillRect(29, 5, 4, 4);
+                    ctx.fillStyle = '#0f172a';
+                    ctx.fillRect(5, 11, 7, 10);
+                    ctx.fillRect(10, -17, 7, 6);
+                    ctx.fillStyle = '#eab308';
+                    ctx.fillRect(5, -8, 2, 16);
+                    break;
+                case 'sniper': // Sniper Rifle
+                    ctx.fillStyle = '#292524';
+                    ctx.fillRect(-15, -4, 14, 8);
+                    ctx.fillStyle = '#78350f';
+                    ctx.fillRect(-14, -3, 11, 6);
+                    ctx.fillStyle = '#064e3b';
+                    ctx.fillRect(-2, -6, 18, 12);
+                    ctx.fillStyle = '#10b981';
+                    ctx.fillRect(0, -4, 12, 3);
+                    ctx.fillStyle = '#334155';
+                    ctx.fillRect(14, -3, 18, 6);
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.fillRect(17, -2, 13, 2);
+                    ctx.fillRect(30, -4, 3, 8);
+                    ctx.fillStyle = '#0f172a';
+                    ctx.fillRect(3, -12, 13, 5);
+                    ctx.fillRect(6, -14, 7, 2);
+                    ctx.fillStyle = '#34d399';
+                    ctx.fillRect(5, -11, 8, 2);
+                    ctx.fillStyle = '#64748b';
+                    ctx.fillRect(5, 6, 2, 5);
+                    ctx.fillRect(2, -7, 2, 3);
+                    break;
+                case 'shotgun': // Engineer Shotgun
+                    ctx.fillStyle = '#292524';
+                    ctx.fillRect(-10, -5, 13, 10);
+                    ctx.fillStyle = '#78350f';
+                    ctx.fillRect(-9, -4, 11, 8);
+                    ctx.fillRect(2, 4, 7, 10);
+                    ctx.fillStyle = '#92400e';
+                    ctx.fillRect(-7, -3, 7, 2);
+                    ctx.fillRect(4, 6, 2, 6);
+                    ctx.fillStyle = '#475569';
+                    ctx.fillRect(2, -6, 15, 12);
+                    ctx.fillStyle = '#f59e0b';
+                    ctx.fillRect(5, -4, 10, 3);
+                    ctx.fillStyle = '#1e293b';
+                    ctx.fillRect(16, -4, 13, 8);
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.fillRect(18, -3, 9, 2);
+                    ctx.fillStyle = '#0f172a';
+                    ctx.fillRect(27, -4, 3, 8);
+                    ctx.fillStyle = '#eab308';
+                    ctx.fillRect(13, -7, 2, 14);
+                    ctx.fillRect(7, -1, 3, 2);
+                    break;
+                case 'syringe': // Medic Syringe Gun
+                    ctx.fillStyle = '#334155';
+                    ctx.fillRect(-8, -5, 15, 10);
+                    ctx.fillStyle = '#991b1b';
+                    ctx.fillRect(-7, -4, 8, 8);
+                    ctx.fillStyle = '#cbd5e1';
+                    ctx.fillRect(5, -4, 17, 8);
+                    ctx.fillStyle = '#fb7185';
+                    ctx.fillRect(9, -3, 8, 6);
+                    ctx.fillStyle = '#fda4af';
+                    ctx.fillRect(10, -2, 6, 2);
+                    ctx.fillStyle = '#0f172a';
+                    ctx.fillRect(21, -2, 8, 4);
+                    ctx.fillStyle = '#e2e8f0';
+                    ctx.fillRect(28, -1, 4, 2);
+                    ctx.fillStyle = '#475569';
+                    ctx.fillRect(-2, 5, 6, 8);
+                    break;
+                case 'revolver': // Spy Revolver
+                    ctx.fillStyle = '#1e293b';
+                    ctx.fillRect(-8, -5, 17, 10);
+                    ctx.fillStyle = '#64748b';
+                    ctx.fillRect(-5, -4, 10, 8);
+                    ctx.fillStyle = '#cbd5e1';
+                    ctx.fillRect(5, -3, 14, 6);
+                    ctx.fillStyle = '#0f172a';
+                    ctx.fillRect(17, -2, 8, 4);
+                    ctx.fillStyle = '#e2e8f0';
+                    ctx.fillRect(22, -1, 5, 2);
+                    ctx.fillStyle = '#7f1d1d';
+                    ctx.fillRect(-4, 5, 6, 9);
+                    ctx.fillStyle = '#eab308';
+                    ctx.fillRect(4, -1, 3, 2);
+                    break;
+            }
+            ctx.restore();
+
+            // Draw Enemies
+            enemies.forEach(en => {
+                ctx.save();
+                ctx.translate(en.x + en.w / 2, en.y);
+                ctx.scale(en.vx < 0 ? -1 : 1, 1);
+
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(-12, 19, 24, 26);
+                ctx.fillRect(-10, 42, 8, 11);
+                ctx.fillRect(2, 42, 8, 11);
+                ctx.fillRect(-12, 52, 11, 4);
+                ctx.fillRect(1, 52, 12, 4);
+                ctx.fillStyle = '#475569';
+                ctx.fillRect(-9, 44, 6, 5);
+                ctx.fillRect(3, 44, 6, 5);
+                ctx.fillStyle = enemyTeamSkin.primary;
+                ctx.fillRect(-11, 20, 22, 23);
+                ctx.fillRect(-14, 22, 5, 11);
+                ctx.fillRect(9, 22, 5, 10);
+                ctx.fillStyle = enemyTeamSkin.dark;
+                ctx.fillRect(-8, 22, 16, 16);
+                ctx.fillStyle = enemyTeamSkin.primary;
+                ctx.fillRect(-6, 24, 12, 10);
+                ctx.fillStyle = enemyTeamSkin.light;
+                ctx.fillRect(-9, 24, 3, 10);
+
+                if (en.type === 'pyro') {
+                    ctx.fillStyle = '#334155';
+                    ctx.fillRect(-16, 23, 5, 16);
+                    ctx.fillStyle = '#64748b';
+                    ctx.fillRect(-16, 26, 5, 3);
+                    ctx.fillRect(-16, 34, 5, 3);
+                    ctx.fillStyle = '#292524';
+                    ctx.fillRect(-8, 4, 16, 5);
+                    ctx.fillRect(-8, 8, 16, 11);
+                    ctx.fillStyle = '#fbbf24';
+                    ctx.fillRect(-5, 11, 4, 3);
+                    ctx.fillRect(2, 11, 4, 3);
+                    ctx.fillStyle = '#111827';
+                    ctx.fillRect(-3, 15, 6, 3);
+                    ctx.fillStyle = '#f97316';
+                    ctx.fillRect(-7, 28, 4, 4);
+                    ctx.fillRect(4, 28, 4, 4);
+                } else {
+                    ctx.fillStyle = '#d6b98c';
+                    ctx.fillRect(-7, 6, 14, 13);
+                    ctx.fillRect(-9, 10, 2, 5);
+                    ctx.fillStyle = '#47502b';
+                    ctx.fillRect(-9, 3, 18, 6);
+                    ctx.fillRect(-6, 1, 12, 3);
+                    ctx.fillStyle = '#1e293b';
+                    ctx.fillRect(3, 11, 3, 3);
+                    ctx.fillStyle = '#cbd5e1';
+                    ctx.fillRect(-4, 5, 8, 2);
+                    ctx.strokeStyle = '#eab308';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(-8, 23);
+                    ctx.lineTo(7, 38);
+                    ctx.stroke();
+                    ctx.fillStyle = '#334155';
+                    ctx.fillRect(8, 24, 12, 4);
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.fillRect(17, 23, 3, 6);
+                }
+
+                if (en.burnTimer > 0) {
+                    ctx.fillStyle = '#f97316';
+                    ctx.fillRect(-14, 16, 3, 6);
+                    ctx.fillRect(12, 12, 3, 7);
+                    ctx.fillStyle = '#facc15';
+                    ctx.fillRect(-13, 14, 2, 4);
+                    ctx.fillRect(13, 10, 2, 4);
+                }
+                ctx.restore();
+
+                // Enemy HP bar above head
+                ctx.fillStyle = '#334155';
+                ctx.fillRect(en.x - 4, en.y - 12, 40, 6);
+                ctx.fillStyle = '#10b981';
+                ctx.fillRect(en.x - 4, en.y - 12, 40 * (en.hp / en.maxHp), 6);
+            });
+
+            // Draw Bullets & Explosive projectiles
+            bullets.forEach(b => {
+                if (b.isCrit) {
+                    ctx.strokeStyle = '#fef08a';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(b.x, b.y, (b.radius || Math.max(b.w || 0, b.h || 0) / 2) + 5, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                ctx.fillStyle = b.color;
+                if (b.type === 'rocket') {
+                    ctx.save();
+                    ctx.translate(b.x, b.y);
+                    ctx.rotate(b.angle || Math.atan2(b.vy, b.vx));
+                    ctx.fillRect(-b.w / 2, -b.h / 2, b.w, b.h);
+                    ctx.fillStyle = '#ef4444';
+                    ctx.fillRect(b.w / 2 - 4, -b.h / 2, 4, b.h);
+                    ctx.restore();
+                } else if (b.type === 'syringe') {
+                    ctx.save();
+                    ctx.translate(b.x, b.y);
+                    ctx.rotate(Math.atan2(b.vy, b.vx));
+                    ctx.fillRect(-5, -1.5, 8, 3);
+                    ctx.fillStyle = '#e2e8f0';
+                    ctx.fillRect(3, -0.5, 5, 1);
+                    ctx.restore();
+                } else if (b.type === 'bullet' && b.color === '#cbd5e1') {
+                    ctx.save();
+                    ctx.translate(b.x, b.y);
+                    ctx.rotate(Math.atan2(b.vy, b.vx));
+                    ctx.fillRect(-4, -2, 8, 4);
+                    ctx.fillStyle = '#f8fafc';
+                    ctx.fillRect(1, -1, 4, 2);
+                    ctx.restore();
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+
+            // Draw Explosion Debris (Mảnh vỡ vật lý)
+            debris.forEach((d, index) => {
+                d.x += d.vx;
+                d.vy += 0.4; // Trọng lực tác dụng lên mảnh vỡ
+                d.y += d.vy;
+                d.rotation += d.vRot;
+                d.life--;
+
+                ctx.save();
+                ctx.translate(d.x, d.y);
+                ctx.rotate(d.rotation);
+                ctx.fillStyle = d.color;
+                ctx.fillRect(-d.w / 2, -d.h / 2, d.w, d.h);
+                ctx.restore();
+
+                // Kiểm tra va chạm mảnh vỡ với mặt đất
+                platforms.forEach(p => {
+                    if (d.x > p.x && d.x < p.x + p.w && d.y >= p.y && d.y <= p.y + 10) {
+                        d.vy = -d.vy * 0.4; // Nảy nhẹ khi chạm đất
+                        d.vx *= 0.8;
+                    }
+                });
+
+                if (d.life <= 0) debris.splice(index, 1);
+            });
+
+            // Draw Particles & Shockwaves
+            particles.forEach((p, index) => {
+                if (p.type === 'shockwave') {
+                    p.r += 3;
+                    p.life--;
+                    ctx.strokeStyle = p.color;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                    ctx.stroke();
+                } else if (p.type === 'spark') {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vx *= 0.88;
+                    p.vy *= 0.88;
+                    p.life--;
+                    ctx.save();
+                    ctx.globalAlpha = Math.max(0, p.life / 16);
+                    ctx.strokeStyle = p.color;
+                    ctx.lineWidth = p.r;
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(p.x - p.vx * 2, p.y - p.vy * 2);
+                    ctx.stroke();
+                    ctx.restore();
+                } else {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.life--;
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(p.x, p.y, p.r, p.r);
+                }
+                if (p.life <= 0) particles.splice(index, 1);
+            });
+
+            // Draw Floating Texts
+            floatingTexts.forEach((ft, index) => {
+                ft.y -= 0.8;
+                ft.life--;
+                ctx.fillStyle = ft.color;
+                ctx.font = 'bold 12px Inter';
+                ctx.fillText(ft.text, ft.x, ft.y);
+                if (ft.life <= 0) floatingTexts.splice(index, 1);
+            });
+
+            ctx.restore();
+        }
+
+        function gameLoop() {
+            if (gameStarted && !isClassSelectOpen && !isQuitConfirmOpen) {
+                update();
+                draw();
+            }
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Start game on load
+        window.onload = function () {
+            updateHUD();
+            gameLoop();
+        };
+    </script>
+</body>
+</html>
